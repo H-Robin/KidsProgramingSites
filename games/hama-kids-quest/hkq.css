@@ -14,9 +14,9 @@
   --robot-base:#2dd4bf;
 
   /* ★ 段差（高さ）ごとのマス色パレット（必要に応じて調整） */
-  --tile-h0:#766d65;
+  --tile-h0:#b4a190;
   --tile-h1:#e9ac57;
-  --tile-h2:#a07603;
+  --tile-h2:#f4ffb3;
   --tile-h3:#dba101;
   --tile-h4:#56da2e;
   --tile-h5:#51fc1d;
@@ -83,10 +83,14 @@ body { margin: 0; background: var(--bg); color: var(--text);
 }
 
 /* 方向アイコン（Main側にも適用される） */
-#program .cmd.icon[data-op="UP"]    { background-image:url("./assets/direction/direction_n.png"); }
-#program .cmd.icon[data-op="RIGHT"] { background-image:url("./assets/direction/direction_e.png"); }
-#program .cmd.icon[data-op="DOWN"]  { background-image:url("./assets/direction/direction_s.png"); }
-#program .cmd.icon[data-op="LEFT"]  { background-image:url("./assets/direction/direction_w.png"); }
+#program .cmd.icon[data-op="UP"],
+#palette .cmd.icon[data-op="UP"]    { background-image:url("./assets/direction/direction_n.png"); }
+#program .cmd.icon[data-op="RIGHT"],s
+#palette .cmd.icon[data-op="RIGHT"] { background-image:url("./assets/direction/direction_e.png"); }
+#program .cmd.icon[data-op="DOWN"],
+#palette .cmd.icon[data-op="DOWN"]  { background-image:url("./assets/direction/direction_s.png"); }
+#program .cmd.icon[data-op="LEFT"],
+#palette .cmd.icon[data-op="LEFT"]  { background-image:url("./assets/direction/direction_w.png"); }
 .cmd.icon:hover{ border-color:var(--accent-2); }
 
 #program{ min-height:80px; background:#324b83; padding:8px; border-radius:10px;

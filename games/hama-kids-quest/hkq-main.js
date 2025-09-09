@@ -21,7 +21,7 @@ const scene = () => game.scene.keys["HkqScene"];
 // 命令パレットUI（回転/JUMPは使わない → 方向＋LIGHT）
 const paletteRoot = document.getElementById("palette");
 const programList = document.getElementById("program");
-const cmds = ["UP","RIGHT","DOWN","LEFT","LIGHT"];
+const cmds = ["UP","RIGHT","DOWN","LEFT"];
 createPalette(paletteRoot, programList, cmds);
 
 // 作られた方向ボタンをアイコン化
