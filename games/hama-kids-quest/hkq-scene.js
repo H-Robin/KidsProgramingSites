@@ -19,8 +19,10 @@ export class HkqScene extends Phaser.Scene {
 
     // レベル・下地
     this.load.json("levels","./hkq-levels.json");
+    this.load.image("goal", "assets/goal.png");
     this.textures.generate("tile0",{ data:["2"], pixelWidth:8, pixelHeight:8 });
     this.textures.generate("tile1",{ data:["7"], pixelWidth:8, pixelHeight:8 });
+  
   }
 
   create(){
@@ -216,14 +218,16 @@ export class HkqScene extends Phaser.Scene {
     goalsArr = goalsArr.slice(0, 1); // ★1ミッション=ゴール1個
 
     // ゴール描画
-    this.goalGfx.clear();
-    this.goalGfx.lineStyle(2, this.goalStroke, 0.95);
-    this.goalGfx.fillStyle(this.goalFill, 0.45);
+    // ゴール描画を画像に置き換え
+    this.goalGroup?.clear(true, true);
+    this.goalGroup = this.add.group();
     goalsArr.forEach(g=>{
-      const gx = this.originX + g.x*this.cell;
-      const gy = this.originY + (gridH-1 - g.y)*this.cell;
-      this.goalGfx.fillRect(gx, gy, this.cell, this.cell);
-      this.goalGfx.strokeRect(gx+0.5, gy+0.5, this.cell-1, this.cell-1);
+      const gx = this.originX + g.x*this.cell + this.cell/2;
+      const gy = this.originY + (gridH-1 - g.y)*this.cell + this.cell/2;
+      const goalSpr = this.add.image(gx, gy, "goal") 
+      .setDisplaySize(this.cell, this.cell)
+      .setOrigin(0.5);
+    this.goalGroup.add(goalSpr);
     });
 
     // グリッド
