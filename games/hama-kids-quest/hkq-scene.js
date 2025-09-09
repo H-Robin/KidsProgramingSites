@@ -29,7 +29,7 @@ export class HkqScene extends Phaser.Scene {
     this.missionIndex = 0;
     this.level  = this.levels?.[this.missionIndex] ?? null;
     this.titleText = null;
-    this._cleared = false; // 1回だけクリア処理するためのガード
+    this._cleared = false; // クリア多重発火ガード
 
     // ==== CSS色 ====
     const css = getComputedStyle(document.documentElement);
@@ -63,7 +63,7 @@ export class HkqScene extends Phaser.Scene {
     this.gridGfx  = this.add.graphics();
     this.map = new Map();
     this.robot = null; this.robotSpr = null; this.robotBase = null;
-    this.goals = new Set(); this.lit = new Set();
+    this.goals = new Set();
     this.status = null;
 
     // 表示調整
@@ -256,8 +256,10 @@ export class HkqScene extends Phaser.Scene {
     this.goals = new Set(goalsArr.map(g=>`${g.x},${g.y}`));
     this.updateRobotTint();
 
-    this.lit   = new Set();
     this.status = this.add.text(12, 8, `Mission ${this.missionIndex+1}/${this.levels.length}`, {fontSize:16, color:"#e2e8f0"});
+
+    // クリア可能化
+    this._cleared = false;
 
     if (showTitle){
       const title = (this.missionIndex < this.levels.length)
@@ -265,25 +267,30 @@ export class HkqScene extends Phaser.Scene {
         : "Mission Complete!";
       this.showMissionTitle(title, ()=>{});
     }
-
-    // クリアガード解除（再開時）
-    this._cleared = false;
   }
 
   resetLevel(){ this.buildLevel(true); }
 
   // ==== 見た目（色＆アニメ）更新 ====
   updateRobotTint(){
+    // 歩行パルス中は walk を維持
     if (this.time.now < this.animLockUntil && this.robotSpr.anims?.getName()==="robot_walk") return;
+
     const onGoal = this.goals?.has(`${this.robot.x},${this.robot.y}`);
     if(onGoal){
+      // ゴール上は黄色
       this.robotSpr.setTint(this.robotOnGoal);
-      if (this.anims.exists("robot_cheer")) this.robotSpr.play("robot_cheer", true);
+      // cheer はクリア後のみ
+      if (this._cleared && this.anims.exists("robot_cheer")) {
+        this.robotSpr.play("robot_cheer", true);
+      }
     }else{
       this.robotSpr.setTint(this.robotDirC[this.robot.dir%4]);
       if (this.anims.exists("robot_idle")) this.robotSpr.play("robot_idle", true);
     }
   }
+
+  // 歩行アニメを短時間だけ再生 → 自動で idle/cheer へ戻す
   playWalkPulse(){
     if (!this.anims.exists("robot_walk")) { this.updateRobotTint(); return; }
     this.robotSpr.play("robot_walk", true);
@@ -294,7 +301,10 @@ export class HkqScene extends Phaser.Scene {
   // ==== コマンド実行 ====
   onTick(op){
     if(!op) return;
-    if (this.time.now >= this.animLockUntil && this.anims.exists("robot_idle")) this.robotSpr.play("robot_idle", true);
+
+    if (this.time.now >= this.animLockUntil && this.anims.exists("robot_idle")) {
+      this.robotSpr.play("robot_idle", true);
+    }
 
     switch(op){
       case "UP":    this.robot.dir=0; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
@@ -302,12 +312,12 @@ export class HkqScene extends Phaser.Scene {
       case "DOWN":  this.robot.dir=2; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
       case "LEFT":  this.robot.dir=3; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
       case "MOVE":  if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      case "LIGHT": this.lightTile(); this.updateRobotTint(); break;
+      // LIGHT は撤去
     }
 
     this.updateSpritePosition();
     this.updateRobotTint();
-    this.checkClear();
+    this.checkClear(); // ★到達で即クリア判定
   }
 
   tryMove(usingJump){
@@ -322,37 +332,53 @@ export class HkqScene extends Phaser.Scene {
     return false;
   }
 
-  lightTile(){
-    const key=`${this.robot.x},${this.robot.y}`;
-    if(this.goals.has(key)) this.lit.add(key);
-    this.status?.setText(`Lit: ${this.lit.size}/${this.goals.size}`);
-  }
-
   updateSpritePosition(){
     const p = this.tileToPx(this.robot.x, this.robot.y);
     this.robotBase?.setPosition(p.x, p.y);
     this.robotSpr.setPosition(p.x, p.y - this.cell * this.ROBOT_OFFSET_Y_RATIO);
   }
 
-  // ==== クリア → 次ミッションへ ====
+  // cheer 1周の時間(ms)
+  getCheerCycleMs(){
+    const anim = this.anims.get('robot_cheer');
+    if (!anim) return 500;
+    const frames = anim.frames?.length ?? 1;
+    const fps = anim.frameRate || 6;
+    return (frames / fps) * 1000;
+  }
+
+  // ==== クリア → cheer×2 → Mainクリア → 次ミッション ====
   checkClear(){
     if (this._cleared) return;
-    if (this.goals.size>0 && this.lit.size===this.goals.size){
+
+    // 「ゴール上に到達したら」即クリア
+    const pos = `${this.robot.x},${this.robot.y}`;
+    if (this.goals.has(pos)){
       this._cleared = true;
       this.status?.setText("Mission Clear!");
-      if (this.anims.exists("robot_cheer")) this.robotSpr.play("robot_cheer", true);
 
-      if (this.missionIndex < this.levels.length - 1){
-        const nextIdx = this.missionIndex + 1;
-        const title = `Mission ${nextIdx+1}: ${this.levels[nextIdx].id || ""}`;
-        this.showMissionTitle(title, ()=> {
-          this.missionIndex = nextIdx;
-          this.level = this.levels[this.missionIndex];
-          this.buildLevel(true);
-        });
-      }else{
-        this.showMissionTitle("Mission Complete!", ()=>{});
-      }
+      // cheer 2周（登録がなければ待ち0ms）
+      if (this.anims.exists("robot_cheer")) this.robotSpr.play("robot_cheer", true);
+      const waitMs = this.anims.exists("robot_cheer") ? this.getCheerCycleMs()*2 : 0;
+
+      this.time.delayedCall(waitMs, () => {
+        // Mainパレットをクリア
+        const programList = document.getElementById('program');
+        if (programList) programList.innerHTML = "";
+
+        // 次ミッションへ（なければコンプリート）
+        if (this.missionIndex < this.levels.length - 1){
+          const nextIdx = this.missionIndex + 1;
+          const title = `Mission ${nextIdx+1}: ${this.levels[nextIdx].id || ""}`;
+          this.showMissionTitle(title, ()=> {
+            this.missionIndex = nextIdx;
+            this.level = this.levels[this.missionIndex];
+            this.buildLevel(true);
+          });
+        }else{
+          this.showMissionTitle("Mission Complete!", ()=>{});
+        }
+      });
     }
   }
 }
