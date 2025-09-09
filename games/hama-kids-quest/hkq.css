@@ -1,0 +1,105 @@
+:root{
+  /* 既存 ------------------------------- */
+  --bg:#1f41ae;
+  --panel:#96e9dd;
+  --panel-border:#846cca;
+  --text:#e2e8f0;
+  --muted:#322431;
+  --accent:#22d3ee;
+  --accent-2:#60a5fa;
+
+  /* シーン用 ---------------------------- */
+  --field-bg:#96e9dd;
+  --grid-line:#2c3e72;
+  --robot-base:#2dd4bf;
+
+  /* ★ 段差（高さ）ごとのマス色パレット（必要に応じて調整） */
+  --tile-h0:#766d65;
+  --tile-h1:#e9ac57;
+  --tile-h2:#a07603;
+  --tile-h3:#5c4609;
+  --tile-h4:#56da2e;
+  --tile-h5:#51fc1d;
+
+  /* ★ ゴール表示／ゴール時ロボ色 */
+  --goal-fill:#ff3b30;      /* ゴールの塗り色（赤） */
+  --goal-stroke:#ff3b30;    /* ゴール枠線（赤） */
+  --robot-on-goal:#ffeb3b;  /* ロボがゴール上にいる時の黄色 */
+
+  /* ロボ向き別（任意で調整可） */
+  --robot-up:#ffffff;
+  --robot-right:#ffec6e;
+  --robot-down:#67e8f9;
+  --robot-left:#a7f3d0;
+}
+
+/* --- 以下は既存（2カラム・右パネル等） --- */
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; }
+
+#app{ display:grid; grid-template-columns:1fr 380px; grid-template-rows:100dvh; gap:0;
+  height:100dvh; height:100svh; height:100vh; }
+
+#stage-left{ min-width:0; display:flex; align-items:stretch; justify-content:stretch;
+  background: var(--field-bg); }
+
+#game-container{ width:100%; height:100%; display:flex; align-items:stretch; justify-content:center; }
+
+#sidebar-right{ background:#d3d4d7; border-left:2px solid #fff; padding:12px; overflow:auto; }
+
+.pane{ background:var(--panel); border:1px solid var(--panel-border); border-radius:12px;
+  padding:12px; margin-bottom:12px; box-shadow:0 2px 10px rgba(211,101,101,.25); }
+.pane h3{ margin:0 0 8px; font-size:14px; font-weight:700; color:var(--muted); }
+
+#palette{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* 既存のcmd */
+.cmd{ padding:10px 12px; border:2px solid #475569; border-radius:10px; cursor:grab; user-select:none;
+  background:#0f172a; transition:transform .08s ease, border-color .12s ease, box-shadow .12s ease;
+  font-size:14px; line-height:1; }
+.cmd:hover{ border-color:var(--accent-2); }
+.cmd:active{ cursor:grabbing; transform:scale(.98); }
+.cmd:focus{ outline:2px solid var(--accent); outline-offset: 2px; }
+
+/* ★ 方向アイコン版（UP/RIGHT/DOWN/LEFT） */
+.cmd.icon{
+  width:56px; height:56px; padding:0;
+  border-radius:12px;
+  background:#0f172a center/44px 44px no-repeat;
+  color:transparent; text-indent:-9999px;
+}
+/* タッチ操作を快適に */
+#palette .cmd, #program .cmd {
+  touch-action: manipulation;
+}
+
+/* Main 側のコマンドにもアイコンを適用（必要なら） */
+#program .cmd.icon{
+  width:56px; height:56px; padding:0;
+  border-radius:12px;
+  background:#0f172a center/44px 44px no-repeat;
+  color:transparent; text-indent:-9999px;
+}
+
+/* 方向アイコン（Main側にも適用される） */
+#program .cmd.icon[data-op="UP"]    { background-image:url("./assets/direction/direction_n.png"); }
+#program .cmd.icon[data-op="RIGHT"] { background-image:url("./assets/direction/direction_e.png"); }
+#program .cmd.icon[data-op="DOWN"]  { background-image:url("./assets/direction/direction_s.png"); }
+#program .cmd.icon[data-op="LEFT"]  { background-image:url("./assets/direction/direction_w.png"); }
+.cmd.icon:hover{ border-color:var(--accent-2); }
+
+#program{ min-height:80px; background:#324b83; padding:8px; border-radius:10px;
+  list-style:decimal inside; display:flex; flex-direction:column; gap:6px; }
+#program li{ padding:8px 10px; border:2px dashed #090f17; border-radius:8px; background:rgba(148,163,184,.06); cursor:pointer; }
+#program li.current{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(175,241,252,.35) inset; }
+
+.controls{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+button{ background:#0f172a; color: var(--text); border:2px solid #64748b; border-radius:10px; padding:8px 12px; font-size:14px; line-height:1; }
+button:hover{ background:#7289a9; border-color:var(--accent-2); }
+
+@media (max-width:900px){ #app{ grid-template-columns:1fr 320px; } }
+@media (max-width:720px){
+  #app{ grid-template-columns:1fr; grid-template-rows:auto auto; }
+  #sidebar-right{ grid-row:2; border-left:none; border-top:2px solid #795656; }
+}

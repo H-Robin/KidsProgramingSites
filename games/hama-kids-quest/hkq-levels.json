@@ -1,0 +1,42 @@
+[
+  {
+    "id": "M1-Line",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 0,
+    "robot": { "x": 0, "y": 2, "dir": 1 },
+    "goalSpec": { "pattern": "line", "count": 3, "minDistance": 3 }
+  },
+  {
+    "id": "M2-ZigZag",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 1,
+    "robot": { "x": 0, "y": 0, "dir": 1 },
+    "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 3 }
+  },
+  {
+    "id": "M3-Perimeter",
+    "gridW": 6,
+    "gridH": 6,
+    "uniformH": 2,
+    "robot": { "x": 3, "y": 3, "dir": 0 },
+    "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 3 }
+  },
+  {
+    "id": "M4-Diagonal",
+    "gridW": 7,
+    "gridH": 7,
+    "uniformH": 3,
+    "robot": { "x": 1, "y": 5, "dir": 1 },
+    "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 3 }
+  },
+  {
+    "id": "M5-Random",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 4,
+    "robot": { "x": 3, "y": 2, "dir": 2 },
+    "goalSpec": { "pattern": "random", "count": 5, "minDistance": 3 }
+  }
+]

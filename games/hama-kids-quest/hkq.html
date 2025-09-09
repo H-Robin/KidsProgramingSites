@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HamaKidsQuest Prototype</title>
+  <link rel="stylesheet" href="./hkq.css" />
+  <!-- Phaser を最初に（グローバル） -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.85.0/dist/phaser.min.js"></script>
+
+  <!-- 共通エンジン / UI -->
+  <script type="module" src="../../common/engine/commands.js"></script>
+  <script type="module" src="../../common/engine/interpreter.js"></script>
+  <script type="module" src="../../common/ui/palette.js"></script>
+
+  <!-- ゲーム側コード -->
+  <script type="module" src="./hkq-main.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 左：フィールド（キャンバスが全域にフィット） -->
+    <div id="stage-left">
+      <div id="game-container"></div>
+    </div>
+
+    <!-- 右：命令UI（上下） -->
+    <aside id="sidebar-right">
+      <div class="pane">
+        <h3>命令パレット</h3>
+        <div id="palette"></div>
+      </div>
+      <div class="pane">
+        <h3>MAIN</h3>
+        <ol id="program"></ol>
+        <div class="controls">
+          <button id="run">▶ 実行</button>
+          <button id="step">⏭ 1手</button>
+          <button id="stop">■ 停止</button>
+          <button id="reset">↻ リセット</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
