@@ -4,7 +4,7 @@
 
 開発者は主に「方向性・目的・調整」を担当し、コーディング作業そのものは ChatGPT に委ねています。
 
-特徴 • 広告なし・無料 で利用可能 • AI 生成コードを活用して構築 • 将来的には単語帳機能や日常で使う語彙の追加も予定
+特徴 • 広告なし・無料 で利用可能
 
 注意点
 
@@ -16,7 +16,7 @@ This repository was developed entirely with the help of ChatGPT. • Specificati
 
 The human developer mainly handled direction, objectives, and adjustments, while most coding tasks were entrusted to ChatGPT.
 
-Features • Free and ad-free usage • Built with AI-generated code • Future plans include a vocabulary/word-list feature and more practice content based on real-life words
+Features • Free and ad-free usage • Built with AI-generated code 
 
 Notes
 
