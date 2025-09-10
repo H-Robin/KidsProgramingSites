@@ -18,7 +18,7 @@ const config = {
 const game = new Phaser.Game(config);
 const scene = () => game.scene.keys["HkqScene"];
 
-// 命令パレットUI（回転/JUMPは使わない → 方向＋LIGHT）
+// 命令パレットUI（方向のみ）
 const paletteRoot = document.getElementById("palette");
 const programList = document.getElementById("program");
 const cmds = ["UP","RIGHT","DOWN","LEFT"];
@@ -36,7 +36,7 @@ const labelMap = { UP:"上へ", RIGHT:"右へ", DOWN:"下へ", LEFT:"左へ" };
   }
 });
 
-// === タッチ/クリックで追加 ===
+// === タッチ/クリックで Main に追加 ===
 function addProgramCmd(op, makeIcon){
   const el = document.createElement('li');
   el.className = 'cmd' + (makeIcon ? ' icon' : '');
@@ -63,14 +63,12 @@ function onPaletteTap(ev){
 paletteRoot.addEventListener('click', onPaletteTap);
 paletteRoot.addEventListener('touchend', onPaletteTap, { passive:true });
 
-// === タッチ/クリックで削除（クリア） ===
+// === タップ/クリックで削除（Mainから） ===
 function onProgramTap(ev){
   const cmd = ev.target.closest('.cmd');
   if (!cmd) return;
   cmd.remove();
 }
-
-// タップ/クリックで Main から削除
 programList.addEventListener('click', onProgramTap);
 programList.addEventListener('touchend', onProgramTap, { passive:true });
 
@@ -81,8 +79,38 @@ const interp = new Interpreter({
   onReset: ()   => scene()?.resetLevel?.(),
 });
 
-// ボタン
-document.getElementById("run").onclick   = () => interp.run();
-document.getElementById("step").onclick  = () => interp.step();
-document.getElementById("stop").onclick  = () => interp.stop();
-document.getElementById("reset").onclick = () => interp.reset();
+// === ボタンと連打ガード ===
+const runBtn   = document.getElementById("run");
+const stepBtn  = document.getElementById("step");
+const stopBtn  = document.getElementById("stop");
+const resetBtn = document.getElementById("reset");
+
+let _resetting = false;
+let _cooldownTimer = null;
+
+function beginCooldown(btn, ms=300){
+  if (_cooldownTimer) clearTimeout(_cooldownTimer);
+  _resetting = true;
+  if (btn) btn.disabled = true;
+  _cooldownTimer = setTimeout(()=>{
+    _resetting = false;
+    if (btn) btn.disabled = false;
+  }, ms);
+}
+
+// 実行系：リセット中は受け付けない
+runBtn.onclick  = () => { if (_resetting) return; interp.run();  };
+stepBtn.onclick = () => { if (_resetting) return; interp.step(); };
+stopBtn.onclick = () => { /* stop はいつでもOKだが念のため */ interp.stop(); };
+
+// Reset：stop → resetLevel → クールダウン（再入防止）
+resetBtn.onclick = () => {
+  if (_resetting) return;
+  beginCooldown(resetBtn, 300);       // ★ 連打ガード
+
+  try { interp.stop?.(); } catch(e) {}
+  try { interp.reset?.(); } catch(e) {}  // Interpreter 内部で ops を再構成
+
+  const sc = scene();
+  try { sc?.resetLevel?.(); } catch(e) {}
+};

@@ -22,7 +22,6 @@ export class HkqScene extends Phaser.Scene {
     this.load.image("goal", "assets/goal.png");
     this.textures.generate("tile0",{ data:["2"], pixelWidth:8, pixelHeight:8 });
     this.textures.generate("tile1",{ data:["7"], pixelWidth:8, pixelHeight:8 });
-  
   }
 
   create(){
@@ -82,6 +81,9 @@ export class HkqScene extends Phaser.Scene {
     this.scale.on("resize", () => this.buildLevel());
     this.buildLevel(true); // タイトル表示して開始
   }
+
+  // === UI ロック（body にフラグ付与） ===
+  lockUI(on){ document.body.classList.toggle('ui-locked', !!on); }
 
   // ==== ユーティリティ ====
   stageBox(){ const w=this.scale.width,h=this.scale.height,pad=16; return {x:pad,y:pad,w:Math.max(0,w-pad*2),h:Math.max(0,h-pad*2)}; }
@@ -151,19 +153,32 @@ export class HkqScene extends Phaser.Scene {
 
   // タイトル表示（フェードIN→1秒→OUT→onDone）
   showMissionTitle(text, onDone){
-    if (this.titleText) { this.titleText.destroy(); this.titleText = null; }
+    // UI をロック
+    this.lockUI(true);
+
+    // 既存の titleText を安全に破棄
+    if (this.titleText) { try{ this.tweens.killTweensOf(this.titleText);}catch(e){} try{ this.titleText.destroy(); }catch(e){} this.titleText = null; }
+
     const { x, y, w, h } = this.stageBox();
-    this.titleText = this.add.text(x + w/2, y + h/2, text, {
+    const txt = this.add.text(x + w/2, y + h/2, text, {
       fontSize: Math.floor(Math.min(w,h)*0.08), color: "#ffffff", fontStyle: "bold"
     }).setOrigin(0.5).setAlpha(0);
+    this.titleText = txt;
 
     this.tweens.add({
-      targets: this.titleText, alpha: 1, duration: 350, ease: "Sine.Out",
+      targets: txt, alpha: 1, duration: 350, ease: "Sine.Out",
       onComplete: () => {
         this.time.delayedCall(1000, () => {
           this.tweens.add({
-            targets: this.titleText, alpha: 0, duration: 350, ease: "Sine.In",
-            onComplete: () => { this.titleText.destroy(); this.titleText = null; onDone && onDone(); }
+            targets: txt, alpha: 0, duration: 350, ease: "Sine.In",
+            onComplete: () => {
+              if (txt && txt.destroy && txt.scene) { try { txt.destroy(); } catch(e){} }
+              if (this.titleText === txt) this.titleText = null;
+              // UI を解放
+              this.lockUI(false);
+              document.body.classList.remove('ui-locked','boot');  // ← これを追加
+              onDone && onDone();
+            }
           });
         });
       }
@@ -172,6 +187,15 @@ export class HkqScene extends Phaser.Scene {
 
   // ==== レベル構築 ====
   buildLevel(showTitle=false){
+    // ★ 既存のタイトル演出を安全に終了
+    if (this.titleText) {
+      try { this.tweens.killTweensOf(this.titleText); } catch(e){}
+      try { this.titleText.destroy(); } catch(e){}
+      this.titleText = null;
+    }
+    // 念のため、残存 Tween も停止
+    try { this.tweens.killAll(); } catch(e){}
+
     this.children.removeAll();
     this.coverGfx = this.add.graphics();
     this.goalGfx  = this.add.graphics();
@@ -210,24 +234,23 @@ export class HkqScene extends Phaser.Scene {
       );
     });
 
-    // ゴール座標（固定 > spec生成）→ 1個に固定
+    // ゴール（1個）
     let goalsArr = Array.isArray(this.level.goals) ? [...this.level.goals] : [];
     if (goalsArr.length === 0 && this.level.goalSpec){
       goalsArr = this.generateGoals(this.level.goalSpec, gridW, gridH, robot);
     }
-    goalsArr = goalsArr.slice(0, 1); // ★1ミッション=ゴール1個
+    goalsArr = goalsArr.slice(0, 1);
 
-    // ゴール描画
-    // ゴール描画を画像に置き換え
+    // ゴール画像描画
     this.goalGroup?.clear(true, true);
     this.goalGroup = this.add.group();
     goalsArr.forEach(g=>{
       const gx = this.originX + g.x*this.cell + this.cell/2;
       const gy = this.originY + (gridH-1 - g.y)*this.cell + this.cell/2;
-      const goalSpr = this.add.image(gx, gy, "goal") 
-      .setDisplaySize(this.cell, this.cell)
-      .setOrigin(0.5);
-    this.goalGroup.add(goalSpr);
+      const goalSpr = this.add.image(gx, gy, "goal")
+        .setDisplaySize(this.cell, this.cell)
+        .setOrigin(0.5);
+      this.goalGroup.add(goalSpr);
     });
 
     // グリッド
@@ -270,6 +293,9 @@ export class HkqScene extends Phaser.Scene {
         ? `Mission ${this.missionIndex+1}: ${this.level.id||""}`
         : "Mission Complete!";
       this.showMissionTitle(title, ()=>{});
+    }else{
+      // タイトルを出さない再構築ではUIを解放しておく
+      this.lockUI(false);
     }
   }
 
@@ -277,14 +303,11 @@ export class HkqScene extends Phaser.Scene {
 
   // ==== 見た目（色＆アニメ）更新 ====
   updateRobotTint(){
-    // 歩行パルス中は walk を維持
     if (this.time.now < this.animLockUntil && this.robotSpr.anims?.getName()==="robot_walk") return;
 
     const onGoal = this.goals?.has(`${this.robot.x},${this.robot.y}`);
     if(onGoal){
-      // ゴール上は黄色
       this.robotSpr.setTint(this.robotOnGoal);
-      // cheer はクリア後のみ
       if (this._cleared && this.anims.exists("robot_cheer")) {
         this.robotSpr.play("robot_cheer", true);
       }
@@ -294,7 +317,6 @@ export class HkqScene extends Phaser.Scene {
     }
   }
 
-  // 歩行アニメを短時間だけ再生 → 自動で idle/cheer へ戻す
   playWalkPulse(){
     if (!this.anims.exists("robot_walk")) { this.updateRobotTint(); return; }
     this.robotSpr.play("robot_walk", true);
@@ -316,12 +338,11 @@ export class HkqScene extends Phaser.Scene {
       case "DOWN":  this.robot.dir=2; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
       case "LEFT":  this.robot.dir=3; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
       case "MOVE":  if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      // LIGHT は撤去
     }
 
     this.updateSpritePosition();
     this.updateRobotTint();
-    this.checkClear(); // ★到達で即クリア判定
+    this.checkClear(); // 到達で即クリア判定
   }
 
   tryMove(usingJump){
@@ -342,7 +363,6 @@ export class HkqScene extends Phaser.Scene {
     this.robotSpr.setPosition(p.x, p.y - this.cell * this.ROBOT_OFFSET_Y_RATIO);
   }
 
-  // cheer 1周の時間(ms)
   getCheerCycleMs(){
     const anim = this.anims.get('robot_cheer');
     if (!anim) return 500;
@@ -355,22 +375,18 @@ export class HkqScene extends Phaser.Scene {
   checkClear(){
     if (this._cleared) return;
 
-    // 「ゴール上に到達したら」即クリア
     const pos = `${this.robot.x},${this.robot.y}`;
     if (this.goals.has(pos)){
       this._cleared = true;
       this.status?.setText("Mission Clear!");
 
-      // cheer 2周（登録がなければ待ち0ms）
       if (this.anims.exists("robot_cheer")) this.robotSpr.play("robot_cheer", true);
       const waitMs = this.anims.exists("robot_cheer") ? this.getCheerCycleMs()*2 : 0;
 
       this.time.delayedCall(waitMs, () => {
-        // Mainパレットをクリア
         const programList = document.getElementById('program');
         if (programList) programList.innerHTML = "";
 
-        // 次ミッションへ（なければコンプリート）
         if (this.missionIndex < this.levels.length - 1){
           const nextIdx = this.missionIndex + 1;
           const title = `Mission ${nextIdx+1}: ${this.levels[nextIdx].id || ""}`;

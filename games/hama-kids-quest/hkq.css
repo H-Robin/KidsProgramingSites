@@ -107,3 +107,31 @@ button:hover{ background:#7289a9; border-color:var(--accent-2); }
   #app{ grid-template-columns:1fr; grid-template-rows:auto auto; }
   #sidebar-right{ grid-row:2; border-left:none; border-top:2px solid #795656; }
 }
+
+/* 起動中は遷移を無効（チラつき防止） */
+body.boot * { transition: none !important; }
+/* === タイトル演出中はUIを隠す＆無効化 === */
+body.ui-locked #palette,
+body.ui-locked #program,
+body.ui-locked #run,
+body.ui-locked #step,
+body.ui-locked #stop,
+body.ui-locked #reset {
+  opacity: 0;
+  pointer-events: none;
+}
+#palette, #program, #run, #step, #stop, #reset {
+  transition: opacity 160ms ease;
+}
+
+/* --- 既存レイアウト・ボタン等はそのまま --- */
+
+/* 方向アイコン（パレット＆Main 両方） —— タイポ修正済み */
+#program .cmd.icon[data-op="UP"],
+#palette .cmd.icon[data-op="UP"]    { background-image:url("./assets/direction/direction_n.png"); }
+#program .cmd.icon[data-op="RIGHT"],
+#palette .cmd.icon[data-op="RIGHT"] { background-image:url("./assets/direction/direction_e.png"); }
+#program .cmd.icon[data-op="DOWN"],
+#palette .cmd.icon[data-op="DOWN"]  { background-image:url("./assets/direction/direction_s.png"); }
+#program .cmd.icon[data-op="LEFT"],
+#palette .cmd.icon[data-op="LEFT"]  { background-image:url("./assets/direction/direction_w.png"); }
