@@ -59,6 +59,9 @@ paletteRoot?.querySelectorAll('.cmd, [data-op]').forEach(el=>{
 
 // ===== Main に1コマンド追加（表示=矢印 / data-op=英語） =====
 function addProgramCmd(label, op){
+  return addProgramCmdInto(programList, label, op);
+}
+function addProgramCmdInto(container, label, op){
   if (!op) return;
   const li = document.createElement('li');
   li.className = 'cmd';
@@ -66,8 +69,62 @@ function addProgramCmd(label, op){
   li.dataset.label = label; // 表示用: 矢印
   li.textContent = label;
   li.setAttribute('title', label);
-  programList.appendChild(li);
+  container.appendChild(li);
   return li;
+}
+
+// ===== くり返しブロック（Scratch風・入れ子禁止） =====
+let recordingRepeat = null; // { blockEl, bodyEl, countInput }
+function createRepeatBlock(defaultCount=2){
+  const block = document.createElement('li');
+  block.className = 'block repeat';
+  block.dataset.op = 'repeat';
+
+  const head = document.createElement('div');
+  head.className = 'repeat-head';
+
+  const label = document.createElement('span');
+  label.textContent = 'くり返し';
+
+  const count = document.createElement('input');
+  count.type = 'number'; count.min = '1'; count.max = '10';
+  count.value = String(defaultCount);
+  count.className = 'repeat-count';
+
+  const endBtn = document.createElement('button');
+  endBtn.type = 'button';
+  endBtn.className = 'repeat-close';
+  endBtn.textContent = 'End';
+
+  head.appendChild(label);
+  head.appendChild(count);
+  head.appendChild(endBtn);
+
+  const body = document.createElement('ul');
+  body.className = 'repeat-body';
+
+  block.appendChild(head);
+  block.appendChild(body);
+  programList.appendChild(block);
+
+  // 編集開始
+  recordingRepeat = { blockEl:block, bodyEl:body, countInput:count };
+  programList.classList.add('recording-repeat');
+
+  endBtn.addEventListener('click', ()=>{
+   // ← Endクリックが親<li>の削除ハンドラに伝播しないようにする
+  }, { passive:true });
+  // 伝播停止（クリックとタップの両方に保険）
+  endBtn.addEventListener('click', (e)=>{ e.stopPropagation(); });
+  endBtn.addEventListener('pointerup', (e)=>{ e.stopPropagation(); });
+
+  endBtn.addEventListener('click', ()=>{
+    if (!body.querySelector('.cmd')) block.remove(); // 空は破棄
+    recordingRepeat = null;
+    programList.classList.remove('recording-repeat');
+  }, { passive:true });
+
+  return block;
 }
 
 // ===== UIロック中は入力拒否（タイトルフェード中） =====
@@ -88,7 +145,7 @@ function dispatchOnce(handler){
   };
 }
 
-// ===== パレット押下 → Main 即追加（くり返し=直前複製） =====
+// ===== パレット押下 → Main直下 or くり返しブロック内へ追加 =====
 function onPalettePress(ev){
   if (isLocked()) return;
   const btn = ev.target.closest('[data-op], .cmd');
@@ -99,16 +156,14 @@ function onPalettePress(ev){
   if (!op) return;
 
   if (op === "repeat"){
-    const last = programList.querySelector('.cmd:last-of-type');
-    if (!last) return;
-    const baseOp    = last.dataset.op;
-    const baseLabel = last.dataset.label || last.textContent || "";
-    if (!baseOp || baseOp === "repeat") return;
-    const n = window.prompt("くり返し回数を入力（2〜9）", "2");
-    const count = Math.max(2, Math.min(9, parseInt(n,10) || 2));
-    for (let i=0;i<count-1;i++) addProgramCmd(baseLabel, baseOp);
+    if (recordingRepeat) return; // 入れ子禁止
+    createRepeatBlock(2);
   } else {
-    addProgramCmd(label, op);
+    if (recordingRepeat){
+      addProgramCmdInto(recordingRepeat.bodyEl, label, op);
+    } else {
+      addProgramCmd(label, op);
+    }
   }
 
   btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),120);
@@ -116,11 +171,18 @@ function onPalettePress(ev){
 paletteRoot.addEventListener('pointerup', dispatchOnce(onPalettePress), { passive:false });
 paletteRoot.addEventListener('click',     dispatchOnce(onPalettePress), { passive:false });
 
-// ===== Main：タップ/クリックで削除 =====
+// ===== Main：クリック/タップで削除（ブロックも削除可） =====
 function onProgramTap(ev){
-  const cmd = ev.target.closest('.cmd');
-  if (!cmd || !programList.contains(cmd)) return;
-  cmd.remove();
+  // Endボタン／ヘッダからのクリックは削除動作を無視
+  if (ev.target.closest('.repeat-close') || ev.target.closest('.repeat-head')) return;
+
+  const li = ev.target.closest('.cmd, .block.repeat');
+  if (!li || !programList.contains(li)) return;
+  if (recordingRepeat && recordingRepeat.blockEl === li){
+    recordingRepeat = null;
+    programList.classList.remove('recording-repeat');
+  }
+  li.remove();
 }
 programList.addEventListener('pointerup', dispatchOnce(onProgramTap), { passive:false });
 programList.addEventListener('click',     dispatchOnce(onProgramTap), { passive:false });
@@ -131,12 +193,11 @@ const sym2sym = { "↑":"↑","↓":"↓","→":"→","←":"←","くり返し"
 const interp = new Interpreter({
   programList,
   onTick:  (op) => {
-    // HkqScene.onTick は英語・矢印・日本語のいずれも受けられる実装にしてある想定
     const sym = en2sym[op] || sym2sym[op] || op;
     scene()?.onTick?.(sym);
   },
   onReset: () => scene()?.resetLevel?.(),
-  tickDelay: 300, // ← ★ 実行間隔：ゆっくりめ（歩行Tweenを260msにするなら+40msくらい）
+  tickDelay: 300, // Tween(260ms)より少し長めに
 });
 
 // ===== 実行・停止・リスタート・終了（連打ガード） =====
@@ -154,11 +215,11 @@ stopBtn && (stopBtn.onclick = ()=>{ interp.stop(); });
 resetBtn && (resetBtn.onclick = ()=>{
   if (_resetting) return;
   cooldown(resetBtn, 300);
-  // ★ Mainパレットのコマンドを全クリア
-  try{ programList.innerHTML = ""; }catch(e){}
   try{ interp.stop?.(); }catch(e){}
   try{ interp.reset?.(); }catch(e){}
   try{ scene()?.resetLevel?.(); }catch(e){}
+  // ★ リスタート時にMainを全消し
+  try{ programList.innerHTML = ""; }catch(e){}
 });
 
 exitBtn && (exitBtn.onclick = ()=>{
@@ -175,7 +236,6 @@ document.addEventListener("hkq:mission-start", (e)=>{
   missionEl && (missionEl.textContent = `ミッション ${e.detail.mission+1}`);
   titleEl   && (titleEl.textContent   = "Hama Kids Quest");
 
-  // 経過タイマー
   if (elapsedEl){
     const t0 = Date.now();
     clearInterval(elapsedEl._tid);

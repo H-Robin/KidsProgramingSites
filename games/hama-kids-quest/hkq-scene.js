@@ -99,13 +99,13 @@ export class HkqScene extends Phaser.Scene {
       .setDisplaySize(Math.floor(cell*0.60), Math.floor(cell*0.60))
       .setDepth(5);
     this.fieldLayer.add(this.goalSpr);
-    
+
     // ロボット（前面）
     const startPx = this.cellToXY(this.startCell.x, this.startCell.y, cell);
     if (this.robotSpr) this.robotSpr.destroy();
     this.robotSpr = this.add.sprite(this.snap(startPx.x), this.snap(startPx.y), "robot_idle0")
       .setOrigin(0.5)
-      .setDisplaySize(Math.floor(cell*0.60), Math.floor(cell*0.60))
+      .setDisplaySize(Math.floor(cell*0.70), Math.floor(cell*0.70))
       .setDepth(10);
     this.robotSpr.play("robot_idle", true);
     this.fieldLayer.add(this.robotSpr);

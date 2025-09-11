@@ -1,21 +1,36 @@
-// interpreter.js — data-op 優先で Main を読み取り、onTick に順次渡す
+// Interpreter — data-op 優先で Main を読み取り、repeatブロックを展開
 export class Interpreter {
-  constructor({ programList, onTick, onReset, tickDelay = 220 }){
+  constructor({ programList, onTick, onReset, tickDelay = 300 }){
     this.programList = programList;
     this.onTick = onTick;
     this.onReset = onReset;
     this.timer = null;
     this.ip = 0;
-    this.tickDelay = tickDelay; // 歩行Tween(~180ms)に少し余裕
+    this.tickDelay = tickDelay;
     this._prog = [];
   }
 
-  // Main の <li> からプログラムを収集（data-op 優先）
+  // Main を読み取り：通常<li>はそのまま、repeatブロックは count × body内 を展開
   readProgram(){
-    const items = [...this.programList.querySelectorAll("li")];
-    return items
-      .map(li => li.dataset?.op || li.dataset?.cmd || li.textContent?.trim())
-      .filter(Boolean);
+    const seq = [];
+    const items = [...this.programList.children];
+    for (const el of items){
+      if (el.classList.contains('cmd')){
+        const op = el.dataset?.op || el.textContent?.trim();
+        if (op) seq.push(op);
+      }else if (el.classList.contains('repeat')){
+        const body = el.querySelector('.repeat-body');
+        const countInput = el.querySelector('.repeat-count');
+        const n = Math.max(1, Math.min(10, parseInt(countInput?.value||'1',10) || 1));
+        const inner = [...(body?.querySelectorAll('.cmd') || [])]
+          .map(li => li.dataset?.op || li.textContent?.trim())
+          .filter(Boolean);
+        // 入れ子は禁止：inner に repeat があれば無視
+        if (inner.some(op => op === 'repeat')) continue;
+        for (let i=0;i<n;i++) seq.push(...inner);
+      }
+    }
+    return seq;
   }
 
   run(){
@@ -29,24 +44,20 @@ export class Interpreter {
       catch(e){ console.error("[Interpreter] onTick error:", e); }
     };
 
-    // setInterval より setTimeout ループの方が停止/再開が安全
     const loop = () => {
-      if (!this.timer) return; // 停止済み
+      if (!this.timer) return;
       tick();
-      if (this.timer) {
-        this.timer = setTimeout(loop, this.tickDelay);
-      }
+      if (this.timer) this.timer = setTimeout(loop, this.tickDelay);
     };
     this.timer = setTimeout(loop, this.tickDelay);
   }
 
   step(){
-    // 直前に run を呼ばず単発で進めたい場合も考慮
     if (!this._prog.length || this.ip >= this._prog.length) {
       this._prog = this.readProgram();
       this.ip = 0;
     }
-    this.stop(); // 同時実行防止
+    this.stop();
     if (this.ip < this._prog.length) {
       try { this.onTick?.(this._prog[this.ip++]); }
       catch(e){ console.error("[Interpreter] onTick error:", e); }
