@@ -2,403 +2,301 @@ export class HkqScene extends Phaser.Scene {
   constructor(){ super("HkqScene"); }
 
   preload(){
-    // 画像（idle / walk / cheer）
-    const IDLE_FILES = [
-      "assets/robot/idle/character_robot_idle0.png",
-      "assets/robot/idle/character_robot_idle1.png"
-    ];
-    IDLE_FILES.forEach((url,i)=> this.load.image(`robot_idle_${i}`, url));
-    for(let i=0;i<=7;i++){
-      this.load.image(`robot_walk_${i}`, `assets/robot/walk/character_robot_walk${i}.png`);
-    }
-    const CHEER_FILES = [
-      "assets/robot/cheer/character_robot_cheer0.png",
-      "assets/robot/cheer/character_robot_cheer1.png"
-    ];
-    CHEER_FILES.forEach((url,i)=> this.load.image(`robot_cheer_${i}`, url));
+    // レベル定義（5ステージ）をロード
+    this.load.json("levels", "hkq-levels.json");
 
-    // レベル・下地
-    this.load.json("levels","./hkq-levels.json");
-    this.load.image("goal", "assets/goal.png");
-    this.textures.generate("tile0",{ data:["2"], pixelWidth:8, pixelHeight:8 });
-    this.textures.generate("tile1",{ data:["7"], pixelWidth:8, pixelHeight:8 });
+    // 画像アセット
+    this.load.image("robot_idle0", "assets/robot/idle/character_robot_idle0.png");
+    this.load.image("robot_idle1", "assets/robot/idle/character_robot_idle1.png");
+    for (let i=0;i<=7;i++){
+      this.load.image(`robot_walk${i}`, `assets/robot/walk/character_robot_walk${i}.png`);
+    }
+    this.load.image("robot_cheer0", "assets/robot/cheer/character_robot_cheer0.png");
+    this.load.image("robot_cheer1", "assets/robot/cheer/character_robot_cheer1.png");
+    this.load.image("goal_png", "assets/goal.png");
   }
 
   create(){
-    // ==== ミッション管理 ====
+    // JSONを展開
     this.levels = this.cache.json.get("levels") || [];
     this.missionIndex = 0;
-    this.level  = this.levels?.[this.missionIndex] ?? null;
-    this.titleText = null;
-    this._cleared = false; // クリア多重発火ガード
 
-    // ==== CSS色 ====
-    const css = getComputedStyle(document.documentElement);
-    const hexToInt = (v, fb=0)=>{ const m=String(v||"").trim().match(/^#?([0-9a-f]{6})$/i); return m?parseInt(m[1],16):fb; };
-    const col = name => hexToInt(css.getPropertyValue(name));
-    this.heightColors = [
-      col('--tile-h0')||0x1b243b, col('--tile-h1')||0x233154, col('--tile-h2')||0x2b3e6e,
-      col('--tile-h3')||0x335a9a, col('--tile-h4')||0x3b77c8, col('--tile-h5')||0x4590e6,
-    ];
-    this.gridColor   = col('--grid-line') || 0x2c3e72;
-    this.robotBaseC  = col('--robot-base')|| 0x2dd4bf;
-    this.goalFill    = col('--goal-fill')     || 0xff3b30;
-    this.goalStroke  = col('--goal-stroke')   || 0xff3b30;
-    this.robotOnGoal = col('--robot-on-goal') || 0xffeb3b;
-    this.robotDirC   = [col('--robot-up')||0xffffff, col('--robot-right')||0xffec6e,
-                        col('--robot-down')||0x67e8f9, col('--robot-left')||0xa7f3d0];
+    this.createAnimations();
+    this.buildLevel(true);
 
-    // ==== アニメ ====
-    const idleFrames = this.textures.getTextureKeys().filter(k=>k.startsWith("robot_idle_"))
-      .sort((a,b)=> +a.split("_").pop() - +b.split("_").pop()).map(key=>({key}));
-    if (idleFrames.length) this.anims.create({ key:"robot_idle", frames:idleFrames, frameRate:4, repeat:-1 });
-    const walkFrames = Array.from({length:8}, (_,i)=>({key:`robot_walk_${i}`}));
-    this.anims.create({ key:"robot_walk", frames:walkFrames, frameRate:10, repeat:-1 });
-    const cheerFrames = this.textures.getTextureKeys().filter(k=>k.startsWith("robot_cheer_"))
-      .sort((a,b)=> +a.split("_").pop() - +b.split("_").pop()).map(key=>({key}));
-    if (cheerFrames.length) this.anims.create({ key:"robot_cheer", frames:cheerFrames, frameRate:6, repeat:-1 });
-
-    // ==== レイヤ/状態 ====
-    this.coverGfx = this.add.graphics();
-    this.goalGfx  = this.add.graphics();
-    this.gridGfx  = this.add.graphics();
-    this.map = new Map();
-    this.robot = null; this.robotSpr = null; this.robotBase = null;
-    this.goals = new Set();
-    this.status = null;
-
-    // 表示調整
-    this.ROBOT_SCALE = 0.6;
-    this.ROBOT_OFFSET_Y_RATIO = 0.15;
-    this.tileToPx = (x, y) => {
-      const { gridH } = this.level;
-      const px = this.originX + x * this.cell;
-      const py = this.originY + (gridH - 1 - y) * this.cell;
-      return { x: px, y: py };
-    };
-    this.animLockUntil = 0;
-
-    this.scale.on("resize", () => this.buildLevel());
-    this.buildLevel(true); // タイトル表示して開始
+    // リサイズ最適化
+    this._lastSize = { w: this.scale.width, h: this.scale.height };
+    this._resizeTid = null;
+    this.scale.on("resize", () => {
+      const w = this.scale.width, h = this.scale.height;
+      if (Math.abs(w - this._lastSize.w) < 8 && Math.abs(h - this._lastSize.h) < 8) return;
+      clearTimeout(this._resizeTid);
+      this._resizeTid = setTimeout(() => {
+        this._lastSize = { w, h };
+        this.buildLevel(false);
+      }, 120);
+    });
   }
 
-  // === UI ロック（body にフラグ付与） ===
-  lockUI(on){ document.body.classList.toggle('ui-locked', !!on); }
+  createAnimations(){
+    this.anims.create({ key:"robot_idle", frames:[ { key:"robot_idle0" }, { key:"robot_idle1" } ], frameRate:2, repeat:-1 });
+    this.anims.create({ key:"robot_walk", frames: Array.from({length:8}, (_,i)=>({ key:`robot_walk${i}` })), frameRate:10, repeat:-1 });
+    this.anims.create({ key:"robot_cheer", frames:[ {key:"robot_cheer0"}, {key:"robot_cheer1"} ], frameRate:6, repeat:-1 });
+  }
 
-  // ==== ユーティリティ ====
-  stageBox(){ const w=this.scale.width,h=this.scale.height,pad=16; return {x:pad,y:pad,w:Math.max(0,w-pad*2),h:Math.max(0,h-pad*2)}; }
-  manhattan(a,b){ return Math.abs(a.x-b.x) + Math.abs(a.y-b.y); }
-  randomRng(){ return Math.random(); }
-  rx(a,b){ return Math.floor(this.randomRng()*(b-a+1))+a; }
+  snap(v){ return Math.round(v); }
 
-  // ゴール生成（line / zigzag / perimeter / diagonal / random）
-  generateGoals(spec, gridW, gridH, robot){
-    const count = Math.max(1, spec.count|0);
-    const minD  = Math.max(0, spec.minDistance|0);
-    const ok = (p)=> this.manhattan(p, robot) >= minD;
-    const pts = [];
-    const uniqPush = (p)=>{ if(ok(p) && !pts.some(q=>q.x===p.x&&q.y===p.y)) pts.push(p); };
-    const randomCell = ()=> ({x:this.rx(0,gridW-1), y:this.rx(0,gridH-1)});
+  // ========= レベル構築 =========
+  buildLevel(showTitle){
+    const L = this.levels[this.missionIndex] || {};
+    this.gridW = L.gridW ?? 5;
+    this.gridH = L.gridH ?? 5;
 
-    switch((spec.pattern||"random")){
+    const startX = (L.robot && Number.isInteger(L.robot.x)) ? L.robot.x : 0;
+    const startY = (L.robot && Number.isInteger(L.robot.y)) ? L.robot.y : (this.gridH - 1);
+    this.startCell = { x:startX, y:startY };
+
+    const W = this.scale.gameSize.width;
+    const H = this.scale.gameSize.height;
+
+    const leftW = Math.floor(W * 0.70);
+    const pad = 16;
+
+    const availW = leftW - pad*2;
+    const availH = H     - pad*2;
+
+    // 80%程度に縮めて見切れ防止
+    const cell = Math.floor(Math.min(availW/this.gridW, availH/this.gridH) * 0.8);
+    const fieldPXW = cell * this.gridW;
+    const fieldPXH = cell * this.gridH;
+
+    const x0 = this.snap(pad + (availW - fieldPXW)/2);
+    const y0 = this.snap(pad + (availH - fieldPXH)/2);
+
+    this.cameras.main.setBackgroundColor("#0b1020");
+    if (this.fieldLayer) this.fieldLayer.destroy(true);
+    this.fieldLayer = this.add.container(x0, y0);
+
+    // グリッド
+    const g = this.add.graphics();
+    g.fillStyle(0x96e9dd, 1);
+    g.fillRect(0, 0, fieldPXW, fieldPXH);
+    g.lineStyle(2, 0x2c3e72, 1);
+    for (let y=0;y<=this.gridH;y++){
+      g.strokeLineShape(new Phaser.Geom.Line(0, y*cell + 0.5, fieldPXW, y*cell + 0.5));
+    }
+    for (let x=0;x<=this.gridW;x++){
+      g.strokeLineShape(new Phaser.Geom.Line(x*cell + 0.5, 0, x*cell + 0.5, fieldPXH));
+    }
+    this.fieldLayer.add(g);
+   // ゴール（goalSpecに基づき1点抽選・背面）
+    const goal = this.pickGoalFromSpec(L.goalSpec);
+    this.goalCell = goal;
+    if (this.goalSpr) this.goalSpr.destroy();
+    const gpx = this.cellToXY(goal.x, goal.y, cell);
+    this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), "goal_png")
+      .setOrigin(0.5)
+      .setDisplaySize(Math.floor(cell*0.60), Math.floor(cell*0.60))
+      .setDepth(5);
+    this.fieldLayer.add(this.goalSpr);
+    
+    // ロボット（前面）
+    const startPx = this.cellToXY(this.startCell.x, this.startCell.y, cell);
+    if (this.robotSpr) this.robotSpr.destroy();
+    this.robotSpr = this.add.sprite(this.snap(startPx.x), this.snap(startPx.y), "robot_idle0")
+      .setOrigin(0.5)
+      .setDisplaySize(Math.floor(cell*0.60), Math.floor(cell*0.60))
+      .setDepth(10);
+    this.robotSpr.play("robot_idle", true);
+    this.fieldLayer.add(this.robotSpr);
+
+ 
+
+    // 状態
+    this.cellSize = cell;
+    this.robotCell = { ...this.startCell };
+    this._cleared = false;
+
+    // タイトル・ミッション開始通知
+    this.emitMissionStart();
+    if (showTitle){
+      const title = `ミッション ${this.missionIndex+1}: ${L.id ?? ""}`;
+      this.showMissionTitle(title, ()=>{});
+    } else {
+      document.body.classList.remove('ui-locked','boot');
+    }
+  }
+
+  emitMissionStart(){
+    const ev = new CustomEvent("hkq:mission-start", { detail:{ mission:this.missionIndex }});
+    document.dispatchEvent(ev);
+  }
+
+  showMissionTitle(text, onDone){
+    const W = this.scale.gameSize.width;
+    const H = this.scale.gameSize.height;
+    if (this.titleText) { try{ this.titleText.destroy(); }catch(e){} this.titleText = null; }
+
+    const t = this.add.text(W/2, H*0.15, text, {
+      fontSize: "40px",
+      color: "#ffffff",
+      fontFamily: "system-ui, -apple-system, 'Noto Sans JP', sans-serif"
+    }).setOrigin(0.5).setAlpha(0);
+    this.titleText = t;
+
+    document.body.classList.add('ui-locked');
+    this.tweens.add({
+      targets: t, alpha:1, duration:300, y: H*0.18, ease:"quad.out",
+      yoyo:true, hold:700,
+      onComplete:()=>{
+        try{ t.destroy(); }catch(e){}
+        this.titleText = null;
+        document.body.classList.remove('ui-locked','boot');
+        onDone && onDone();
+      }
+    });
+  }
+
+  // ===== goalSpec 処理：候補から1点抽選 =====
+  pickGoalFromSpec(spec){
+    const minDist = Math.max(0, spec?.minDistance ?? 0);
+    const start = this.startCell;
+    const inside = (x,y)=> x>=0 && x<this.gridW && y>=0 && y<this.gridH;
+    const farEnough = (x,y)=> Math.abs(x-start.x)+Math.abs(y-start.y) >= minDist;
+
+    let candidates = [];
+    switch (spec?.pattern) {
       case "line": {
-        const horiz = Math.random()<0.5;
-        if(horiz){
-          const y = this.rx(0,gridH-1);
-          let xs = Array.from({length:gridW}, (_,i)=>i).sort(()=>Math.random()-0.5).slice(0,count).sort((a,b)=>a-b);
-          xs.forEach(x=> uniqPush({x,y}));
-        }else{
-          const x = this.rx(0,gridW-1);
-          let ys = Array.from({length:gridH}, (_,i)=>i).sort(()=>Math.random()-0.5).slice(0,count).sort((a,b)=>a-b);
-          ys.forEach(y=> uniqPush({x,y}));
-        }
+        const y = Math.floor(this.gridH/2);
+        for (let x=0;x<this.gridW;x++)
+          if (!(x===start.x&&y===start.y)) candidates.push({x,y});
         break;
       }
       case "zigzag": {
-        let x0 = this.rx(0, Math.max(0, gridW-count));
-        let y  = this.rx(0, gridH-1);
-        let dir = Math.random()<0.5 ? 1 : -1;
-        for(let i=0;i<count;i++){
-          uniqPush({x:x0+i, y});
-          y += dir; if(y<0){y=1;dir=1;} if(y>=gridH){y=gridH-2;dir=-1;}
+        for (let x=0;x<this.gridW;x++){
+          const y = (x%2===0) ? 0 : Math.min(this.gridH-1, 1);
+          if (inside(x,y) && !(x===start.x&&y===start.y)) candidates.push({x,y});
         }
         break;
       }
       case "perimeter": {
-        const border = [];
-        for(let x=0;x<gridW;x++){ border.push({x, y:0}); border.push({x, y:gridH-1}); }
-        for(let y=1;y<gridH-1;y++){ border.push({x:0,y}); border.push({x:gridW-1,y}); }
-        while(pts.length<count && border.length){ const i=this.rx(0,border.length-1); uniqPush(border.splice(i,1)[0]); }
+        for (let x=0;x<this.gridW;x++){
+          [{x,y:0},{x,y:this.gridH-1}].forEach(p=>{ if(inside(p.x,p.y)) candidates.push(p); });
+        }
+        for (let y=1;y<this.gridH-1;y++){
+          [{x:0,y},{x:this.gridW-1,y}].forEach(p=>{ if(inside(p.x,p.y)) candidates.push(p); });
+        }
+        candidates = candidates.filter(p=>!(p.x===start.x&&p.y===start.y));
         break;
       }
       case "diagonal": {
-        const down = Math.random()<0.5; const base = this.rx(0, Math.min(gridW,gridH)-1);
-        for(let i=0;i<count;i++){
-          const x = Math.min(gridW-1, base+i);
-          const y = down ? Math.min(gridH-1, i) : Math.max(0, (gridH-1)-i);
-          uniqPush({x,y});
-        }
+        const m = Math.min(this.gridW, this.gridH);
+        for (let i=0;i<m;i++) if (!(i===start.x && i===start.y)) candidates.push({x:i,y:i});
         break;
       }
+      case "random":
       default: {
-        let guard = 500;
-        while(pts.length<count && guard--) uniqPush(randomCell());
+        for (let x=0;x<this.gridW;x++){
+          for (let y=0;y<this.gridH;y++){
+            if (!(x===start.x && y===start.y)) candidates.push({x,y});
+          }
+        }
       }
     }
-    // 不足分補充
-    let guard = 500;
-    while(pts.length<count && guard--) uniqPush(randomCell());
-    return pts.slice(0, count);
+
+    const filtered = candidates.filter(p=>farEnough(p.x,p.y));
+    const pool = filtered.length ? filtered : candidates;
+    if (!pool.length) return this.randomGoalFallback();
+
+    return pool[Math.floor(Math.random()*pool.length)];
   }
 
-  // タイトル表示（フェードIN→1秒→OUT→onDone）
-  showMissionTitle(text, onDone){
-    // UI をロック
-    this.lockUI(true);
-
-    // 既存の titleText を安全に破棄
-    if (this.titleText) { try{ this.tweens.killTweensOf(this.titleText);}catch(e){} try{ this.titleText.destroy(); }catch(e){} this.titleText = null; }
-
-    const { x, y, w, h } = this.stageBox();
-    const txt = this.add.text(x + w/2, y + h/2, text, {
-      fontSize: Math.floor(Math.min(w,h)*0.08), color: "#ffffff", fontStyle: "bold"
-    }).setOrigin(0.5).setAlpha(0);
-    this.titleText = txt;
-
-    this.tweens.add({
-      targets: txt, alpha: 1, duration: 350, ease: "Sine.Out",
-      onComplete: () => {
-        this.time.delayedCall(1000, () => {
-          this.tweens.add({
-            targets: txt, alpha: 0, duration: 350, ease: "Sine.In",
-            onComplete: () => {
-              if (txt && txt.destroy && txt.scene) { try { txt.destroy(); } catch(e){} }
-              if (this.titleText === txt) this.titleText = null;
-              // UI を解放
-              this.lockUI(false);
-              document.body.classList.remove('ui-locked','boot');  // ← これを追加
-              onDone && onDone();
-            }
-          });
-        });
-      }
-    });
-  }
-
-  // ==== レベル構築 ====
-  buildLevel(showTitle=false){
-    // ★ 既存のタイトル演出を安全に終了
-    if (this.titleText) {
-      try { this.tweens.killTweensOf(this.titleText); } catch(e){}
-      try { this.titleText.destroy(); } catch(e){}
-      this.titleText = null;
-    }
-    // 念のため、残存 Tween も停止
-    try { this.tweens.killAll(); } catch(e){}
-
-    this.children.removeAll();
-    this.coverGfx = this.add.graphics();
-    this.goalGfx  = this.add.graphics();
-    this.gridGfx  = this.add.graphics();
-
-    if(!this.level){ this.add.text(20,20,"No level data",{color:"#fff"}); return; }
-
-    const {gridW, gridH, robot} = this.level;
-
-    // タイル（uniformH から自動生成）
-    let tiles = this.level.tiles;
-    if (!tiles || !Array.isArray(tiles) || tiles.length === 0) {
-      const h = (this.level.uniformH|0) || 0;
-      tiles = [];
-      for (let y=0; y<gridH; y++) for (let x=0; x<gridW; x++) tiles.push({x, y, h});
-    }
-
-    // セル・原点
-    const box = this.stageBox();
-    const cell = Math.floor(Math.min(box.w/gridW, box.h/gridH));
-    this.cell = Math.max(24, cell);
-    const drawW=this.cell*gridW, drawH=this.cell*gridH;
-    this.originX = box.x + Math.floor((box.w-drawW)/2);
-    this.originY = box.y + Math.floor((box.h-drawH)/2);
-
-    // タイル色カバー
-    this.map.clear();
-    tiles.forEach(t=>{
-      this.map.set(`${t.x},${t.y}`, t);
-      const idx = ((t.h|0)%this.heightColors.length + this.heightColors.length)%this.heightColors.length;
-      this.coverGfx.fillStyle(this.heightColors[idx], 1);
-      this.coverGfx.fillRect(
-        this.originX + t.x*this.cell,
-        this.originY + (gridH-1 - t.y)*this.cell,
-        this.cell, this.cell
-      );
-    });
-
-    // ゴール（1個）
-    let goalsArr = Array.isArray(this.level.goals) ? [...this.level.goals] : [];
-    if (goalsArr.length === 0 && this.level.goalSpec){
-      goalsArr = this.generateGoals(this.level.goalSpec, gridW, gridH, robot);
-    }
-    goalsArr = goalsArr.slice(0, 1);
-
-    // ゴール画像描画
-    this.goalGroup?.clear(true, true);
-    this.goalGroup = this.add.group();
-    goalsArr.forEach(g=>{
-      const gx = this.originX + g.x*this.cell + this.cell/2;
-      const gy = this.originY + (gridH-1 - g.y)*this.cell + this.cell/2;
-      const goalSpr = this.add.image(gx, gy, "goal")
-        .setDisplaySize(this.cell, this.cell)
-        .setOrigin(0.5);
-      this.goalGroup.add(goalSpr);
-    });
-
-    // グリッド
-    this.gridGfx.lineStyle(1, this.gridColor, 0.65);
-    for(let x=0; x<=gridW; x++){
-      const gx=this.originX + x*this.cell + 0.5;
-      this.gridGfx.beginPath(); this.gridGfx.moveTo(gx, this.originY+0.5);
-      this.gridGfx.lineTo(gx, this.originY+drawH+0.5); this.gridGfx.strokePath();
-    }
-    for(let y=0; y<=gridH; y++){
-      const gy=this.originY + y*this.cell + 0.5;
-      this.gridGfx.beginPath(); this.gridGfx.moveTo(this.originX+0.5, gy);
-      this.gridGfx.lineTo(this.originX+drawW+0.5, gy); this.gridGfx.strokePath();
-    }
-
-    // ロボ配置
-    this.robot = { x: robot.x, y: robot.y, dir: robot.dir|0 };
-    this.robotBase = this.add.rectangle(
-      this.originX + this.robot.x*this.cell,
-      this.originY + (gridH-1 - this.robot.y)*this.cell,
-      this.cell, this.cell, this.robotBaseC, 0.35
-    ).setOrigin(0);
-
-    const firstIdleKey = this.textures.getTextureKeys().find(k=>k.startsWith("robot_idle_")) || "robot_walk_0";
-    const p0 = this.tileToPx(this.robot.x, this.robot.y);
-    this.robotSpr = this.add.sprite(p0.x, p0.y, firstIdleKey).setOrigin(0).setScale(this.ROBOT_SCALE);
-    this.robotSpr.y -= this.cell * this.ROBOT_OFFSET_Y_RATIO;
-    if (this.anims.exists("robot_idle")) this.robotSpr.play("robot_idle"); else this.robotSpr.play("robot_walk");
-
-    this.goals = new Set(goalsArr.map(g=>`${g.x},${g.y}`));
-    this.updateRobotTint();
-
-    this.status = this.add.text(12, 8, `Mission ${this.missionIndex+1}/${this.levels.length}`, {fontSize:16, color:"#e2e8f0"});
-
-    // クリア可能化
-    this._cleared = false;
-
-    if (showTitle){
-      const title = (this.missionIndex < this.levels.length)
-        ? `Mission ${this.missionIndex+1}: ${this.level.id||""}`
-        : "Mission Complete!";
-      this.showMissionTitle(title, ()=>{});
-    }else{
-      // タイトルを出さない再構築ではUIを解放しておく
-      this.lockUI(false);
+  // 最後の砦（全セルからランダム）
+  randomGoalFallback(){
+    while(true){
+      const gx = Math.floor(Math.random()*this.gridW);
+      const gy = Math.floor(Math.random()*this.gridH);
+      if (gx !== this.startCell.x || gy !== this.startCell.y) return {x:gx,y:gy};
     }
   }
 
-  resetLevel(){ this.buildLevel(true); }
-
-  // ==== 見た目（色＆アニメ）更新 ====
-  updateRobotTint(){
-    if (this.time.now < this.animLockUntil && this.robotSpr.anims?.getName()==="robot_walk") return;
-
-    const onGoal = this.goals?.has(`${this.robot.x},${this.robot.y}`);
-    if(onGoal){
-      this.robotSpr.setTint(this.robotOnGoal);
-      if (this._cleared && this.anims.exists("robot_cheer")) {
-        this.robotSpr.play("robot_cheer", true);
-      }
-    }else{
-      this.robotSpr.setTint(this.robotDirC[this.robot.dir%4]);
-      if (this.anims.exists("robot_idle")) this.robotSpr.play("robot_idle", true);
+  // ===== 判定（セル一致 + 座標誤差許容） =====
+  isAtGoal(){
+    if (!this.goalCell || !this.robotCell) return false;
+    if (this.robotCell.x === this.goalCell.x && this.robotCell.y === this.goalCell.y) return true;
+    if (this.robotSpr && this.goalSpr){
+      const dx = Math.abs(this.robotSpr.x - this.goalSpr.x);
+      const dy = Math.abs(this.robotSpr.y - this.goalSpr.y);
+      const tol = Math.max(2, Math.floor(this.cellSize * 0.2));
+      return dx <= tol && dy <= tol;
     }
-  }
-
-  playWalkPulse(){
-    if (!this.anims.exists("robot_walk")) { this.updateRobotTint(); return; }
-    this.robotSpr.play("robot_walk", true);
-    this.animLockUntil = this.time.now + 280;
-    this.time.delayedCall(280, ()=> this.updateRobotTint());
-  }
-
-  // ==== コマンド実行 ====
-  onTick(op){
-    if(!op) return;
-
-    if (this.time.now >= this.animLockUntil && this.anims.exists("robot_idle")) {
-      this.robotSpr.play("robot_idle", true);
-    }
-
-    switch(op){
-      case "UP":    this.robot.dir=0; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      case "RIGHT": this.robot.dir=1; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      case "DOWN":  this.robot.dir=2; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      case "LEFT":  this.robot.dir=3; if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-      case "MOVE":  if(this.tryMove(false)) this.playWalkPulse(); else this.updateRobotTint(); break;
-    }
-
-    this.updateSpritePosition();
-    this.updateRobotTint();
-    this.checkClear(); // 到達で即クリア判定
-  }
-
-  tryMove(usingJump){
-    const dir=this.robot.dir;
-    const dx=[0,1,0,-1][dir], dy=[1,0,-1,0][dir];
-    const curr=this.map.get(`${this.robot.x},${this.robot.y}`);
-    const next=this.map.get(`${this.robot.x+dx},${this.robot.y+dy}`);
-    if(!next||!curr) return false;
-    const dh=(next.h|0)-(curr.h|0);
-    const can= usingJump ? (dh===1 || dh<=0) : (dh===0);
-    if(can){ this.robot.x+=dx; this.robot.y+=dy; return true; }
     return false;
   }
 
-  updateSpritePosition(){
-    const p = this.tileToPx(this.robot.x, this.robot.y);
-    this.robotBase?.setPosition(p.x, p.y);
-    this.robotSpr.setPosition(p.x, p.y - this.cell * this.ROBOT_OFFSET_Y_RATIO);
-  }
+  handleGoalReached(){
+    this._cleared = true;
+    this.robotSpr.play("robot_cheer", true);
 
-  getCheerCycleMs(){
-    const anim = this.anims.get('robot_cheer');
-    if (!anim) return 500;
-    const frames = anim.frames?.length ?? 1;
-    const fps = anim.frameRate || 6;
-    return (frames / fps) * 1000;
-  }
-
-  // ==== クリア → cheer×2 → Mainクリア → 次ミッション ====
-  checkClear(){
-    if (this._cleared) return;
-
-    const pos = `${this.robot.x},${this.robot.y}`;
-    if (this.goals.has(pos)){
-      this._cleared = true;
-      this.status?.setText("Mission Clear!");
-
-      if (this.anims.exists("robot_cheer")) this.robotSpr.play("robot_cheer", true);
-      const waitMs = this.anims.exists("robot_cheer") ? this.getCheerCycleMs()*2 : 0;
-
-      this.time.delayedCall(waitMs, () => {
-        const programList = document.getElementById('program');
-        if (programList) programList.innerHTML = "";
-
-        if (this.missionIndex < this.levels.length - 1){
+    // cheer 2回後に次ミッションへ
+    this.time.delayedCall(900, ()=>{
+      this.robotSpr.play("robot_cheer", true);
+      this.time.delayedCall(900, ()=>{
+        const last = (this.levels?.length || 1) - 1;
+        if (this.missionIndex < last){
           const nextIdx = this.missionIndex + 1;
-          const title = `Mission ${nextIdx+1}: ${this.levels[nextIdx].id || ""}`;
-          this.showMissionTitle(title, ()=> {
+          const nextTitle = `ミッション ${nextIdx+1}: ${this.levels[nextIdx]?.id ?? ""}`;
+          this.showMissionTitle(nextTitle, ()=>{
             this.missionIndex = nextIdx;
-            this.level = this.levels[this.missionIndex];
             this.buildLevel(true);
           });
-        }else{
-          this.showMissionTitle("Mission Complete!", ()=>{});
+        } else {
+          this.showMissionTitle("Mission Complete!", ()=>{
+            this.missionIndex = 0; // 最初に戻す
+            this.buildLevel(true);
+          });
         }
       });
-    }
+    });
   }
+
+  // ===== 1ステップ実行（英語/矢印/日本語 いずれもOK） =====
+  onTick(op){
+    if (this._cleared) return;
+    const DIR = {
+      up:{dx:0,dy:-1},    "↑":{dx:0,dy:-1}, "まえ":{dx:0,dy:-1},
+      down:{dx:0,dy:1},   "↓":{dx:0,dy:1},  "うしろ":{dx:0,dy:1},
+      right:{dx:1,dy:0},  "→":{dx:1,dy:0},  "みぎ":{dx:1,dy:0},
+      left:{dx:-1,dy:0},  "←":{dx:-1,dy:0}, "ひだり":{dx:-1,dy:0},
+    };
+    const dir = DIR[op];
+    if (!dir) return;
+
+    const nx = Phaser.Math.Clamp(this.robotCell.x + dir.dx, 0, this.gridW-1);
+    const ny = Phaser.Math.Clamp(this.robotCell.y + dir.dy, 0, this.gridH-1);
+    this.robotCell = { x:nx, y:ny };
+
+    const p = this.cellToXY(nx, ny, this.cellSize);
+    this.robotSpr.play("robot_walk", true);
+    this.tweens.add({
+      targets: this.robotSpr,
+      x: this.snap(p.x), y: this.snap(p.y),
+      duration: 260,
+      ease: "quad.out",
+      onComplete: ()=>{
+        if (this._cleared) return;
+        if (this.isAtGoal()){
+          this.handleGoalReached();
+        } else {
+          this.robotSpr.play("robot_idle", true);
+        }
+      }
+    });
+  }
+
+  // ===== API =====
+  resetLevel(){ this.buildLevel(false); }
+  gotoMission(idx){ this.missionIndex = Math.max(0, idx|0); this.buildLevel(true); }
+
+  // セル中心（コンテナ座標系）
+  cellToXY(x, y, cell){ return { x: this.snap(x*cell + cell/2), y: this.snap(y*cell + cell/2) }; }
 }

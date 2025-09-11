@@ -1,43 +1,21 @@
-import { CommandSet } from "../engine/commands.js";
-
+// palette.js — 置き換え版（クリック追加に統一 / DnDは持たない）
 export function createPalette(paletteRoot, programList, cmds){
-  // パレット
+  // cmds: [{ label:"まえ", op:"forward" }, ...] を想定（表示=日本語 / 内部=英語）
+  if (!paletteRoot) return;
+
+  // 既存クリア（必要なら）
+  // paletteRoot.innerHTML = "";
+
   cmds.forEach(c=>{
-    const b = document.createElement("div");
-    b.className = "cmd"; b.draggable = true; b.textContent = label(c);
-    b.dataset.cmd = c;
-    b.addEventListener("dragstart", e=> e.dataTransfer.setData("text/plain", c));
-    paletteRoot.appendChild(b);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cmd";
+    btn.textContent   = c.label;   // 画面表示は日本語
+    btn.dataset.label = c.label;   // 表示ラベル
+    btn.dataset.op    = c.op;      // Interpreter に渡す英語トークン
+    btn.draggable = false;         // DnDは使わない（hkq-main.js側でクリック追加）
+    paletteRoot.appendChild(btn);
   });
 
-  // ドロップ先（プログラム列）
-  programList.addEventListener("dragover", e=> e.preventDefault());
-  programList.addEventListener("drop", e=>{
-    e.preventDefault();
-    const cmd = e.dataTransfer.getData("text/plain");
-    addItem(programList, cmd);
-  });
-
-  // クリックで削除
-  programList.addEventListener("click", e=>{
-    if(e.target.tagName==="LI") e.target.remove();
-  });
-}
-
-function addItem(list, cmd){
-  const li = document.createElement("li");
-  li.textContent = label(cmd);
-  li.dataset.cmd = cmd;
-  list.appendChild(li);
-}
-
-function label(cmd){
-  switch(cmd){
-    case CommandSet.MOVE: return "→ 前進";
-    case CommandSet.TURN_L: return "↶ 左回転";
-    case CommandSet.TURN_R: return "↷ 右回転";
-    case CommandSet.LIGHT: return "💡 点灯";
-    case CommandSet.JUMP: return "⤴ ジャンプ";
-    default: return cmd;
-  }
+  // ★ ここでは programList には一切触れない（追加/削除は hkq-main.js 側で処理）
 }

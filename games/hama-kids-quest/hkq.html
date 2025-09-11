@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HamaKidsQuest Prototype</title>
+
   <link rel="stylesheet" href="./hkq.css" />
   <!-- Phaser を最初に（グローバル） -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.85.0/dist/phaser.min.js"></script>
@@ -17,6 +18,13 @@
   <script type="module" src="./hkq-main.js"></script>
 </head>
 <body class="ui-locked boot">
+  <!-- ★ タイトルバー（ページ上部・全幅） -->
+  <header class="titlebar">
+    <div id="game-title" class="title">Hama Kids Quest</div>
+    <div id="mission-label" class="mission">ミッション 1</div>
+    <div id="elapsed" class="elapsed">00:00</div>
+  </header>
+
   <div id="app">
     <!-- 左：フィールド（キャンバスが全域にフィット） -->
     <div id="stage-left">
@@ -29,14 +37,16 @@
         <h3>命令パレット</h3>
         <div id="palette"></div>
       </div>
+
       <div class="pane">
         <h3>MAIN</h3>
         <ol id="program"></ol>
         <div class="controls">
           <button id="run">▶ 実行</button>
-          <button id="step">⏭ 1手</button>
+          <button id="step">⏭ ステップ</button>
           <button id="stop">■ 停止</button>
-          <button id="reset">↻ リセット</button>
+          <button id="reset">↻ リスタート</button>
+          <button id="exit">⏹ 終了</button>
         </div>
       </div>
     </aside>

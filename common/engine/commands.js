@@ -1,7 +1,8 @@
+// commands.js — 現仕様の英語トークンに統一
 export const CommandSet = {
-  MOVE:   "MOVE",
-  TURN_L: "TURN_L",
-  TURN_R: "TURN_R",
-  LIGHT:  "LIGHT",
-  JUMP:   "JUMP"
+  UP: "up",
+  DOWN: "down",
+  RIGHT: "right",
+  LEFT: "left",
+  REPEAT: "repeat",
 };
