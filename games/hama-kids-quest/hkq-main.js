@@ -154,6 +154,8 @@ stopBtn && (stopBtn.onclick = ()=>{ interp.stop(); });
 resetBtn && (resetBtn.onclick = ()=>{
   if (_resetting) return;
   cooldown(resetBtn, 300);
+  // ★ Mainパレットのコマンドを全クリア
+  try{ programList.innerHTML = ""; }catch(e){}
   try{ interp.stop?.(); }catch(e){}
   try{ interp.reset?.(); }catch(e){}
   try{ scene()?.resetLevel?.(); }catch(e){}
