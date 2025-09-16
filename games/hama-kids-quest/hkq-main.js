@@ -247,3 +247,11 @@ document.addEventListener("hkq:mission-start", (e)=>{
     }, 250);
   }
 });
+
+// ===== ミッションクリア時：Mainを自動クリア =====
+document.addEventListener("hkq:mission-cleared", (e)=>{
+  try { programList.innerHTML = ""; } catch(_){}
+  try { interp.stop?.(); } catch(_){}
+  // （必要なら）実行ボタンを一瞬無効化して暴発防止
+  [runBtn, stepBtn].forEach(b=>{ if(b){ b.disabled = true; setTimeout(()=>b.disabled=false, 800);} });
+});

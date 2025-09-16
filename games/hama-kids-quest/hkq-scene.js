@@ -238,7 +238,9 @@ export class HkqScene extends Phaser.Scene {
   handleGoalReached(){
     this._cleared = true;
     this.robotSpr.play("robot_cheer", true);
-
+    // ★ クリアイベント（Mainのコマンドを片付ける合図）
+    const ev = new CustomEvent("hkq:mission-cleared", { detail:{ mission:this.missionIndex }});
+    document.dispatchEvent(ev)
     // cheer 2回後に次ミッションへ
     this.time.delayedCall(900, ()=>{
       this.robotSpr.play("robot_cheer", true);
