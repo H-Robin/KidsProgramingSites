@@ -66,6 +66,30 @@ body {
 .cmd:active{ transform:scale(.98); }
 #palette .cmd.pressed{ transform:scale(.95); transition:transform 120ms ease; }
 
+/* ==== command icon mode ==== */
+#palette .cmd.icon {
+  width: 48px; height: 48px;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+#palette .cmd.icon img {
+  display: block;
+  width: 40px; height: 40px; /* お好みで 36〜48px */
+  image-rendering: auto;     /* ぼけ防止 */
+}
+
+/* テキストはスクリーンリーダー用に保持（視覚的には隠す） */
+#palette .cmd.icon .sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
 /* Main プログラム表示 */
 #program{
   min-height:96px;
@@ -128,7 +152,7 @@ body.ui-locked #program,
 body.ui-locked #run,
 body.ui-locked #step,
 body.ui-locked #stop,
-body.ui-locked #reset,
+/* body.ui-locked #reset, */
 body.ui-locked #exit{
   opacity:0; pointer-events:none; visibility:hidden;
 }

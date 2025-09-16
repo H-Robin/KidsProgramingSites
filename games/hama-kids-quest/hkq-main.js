@@ -1,6 +1,6 @@
 import { createPalette } from "../../common/ui/palette.js";
 import { Interpreter } from "../../common/engine/interpreter.js";
-import { HkqScene } from "./hkq-scene.js";
+import { HkqScene } from './src/scene/hkq-scene.js';
 
 // ===== Phaser 設定 =====
 const config = {
@@ -22,7 +22,7 @@ const programList = document.getElementById("program");
 const runBtn   = document.getElementById("run");
 const stepBtn  = document.getElementById("step");
 const stopBtn  = document.getElementById("stop");
-const resetBtn = document.getElementById("reset");
+/* const resetBtn = document.getElementById("reset"); */
 const exitBtn  = document.getElementById("exit");
 
 // ===== パレット（表示=矢印 / 内部op=英語） =====
@@ -34,6 +34,46 @@ const CMDS = [
   { label: "くり返し", op: "repeat" }
 ];
 createPalette(paletteRoot, programList, CMDS);
+
+// --- 画像アイコンに差し替え ---
+(function replacePaletteTextWithIcons(){
+  const map = {
+    up:    'assets/direction/arrow-ne.png', // ↗︎
+    right: 'assets/direction/arrow-se.png', // ↘︎
+    down:  'assets/direction/arrow-nw.png', // ↙︎
+    left:  'assets/direction/arrow-sw.png', // ↖︎
+
+  };
+  const aliases = {
+    up:    ['up','↑','まえ','上'],
+    right: ['right','→','みぎ','右'],
+    down:  ['down','↓','うしろ','下'],
+    left:  ['left','←','ひだり','左'],
+  };
+
+  const guessKey = (txt) => {
+    const s = txt.trim();
+    for (const k of Object.keys(aliases)) {
+      if (aliases[k].includes(s)) return k;
+    }
+    return null;
+  };
+
+  paletteRoot.querySelectorAll('.cmd').forEach(btn=>{
+    if (btn.classList.contains('icon')) return;
+    const label = (btn.dataset.label || btn.textContent || "").trim();
+    const key = guessKey(label);
+    if (!key) return;
+    const src = map[key];
+
+    btn.classList.add('icon');
+    btn.setAttribute('aria-label', label);
+    btn.innerHTML = `
+      <img src="${src}" alt="${label}">
+      <span class="sr-only">${label}</span>
+    `;
+  });
+})();
 
 // ---- Drag&Drop 無効化（pointer/click を奪わせない） ----
 function disableDragAndDrop(root){
@@ -208,10 +248,18 @@ function cooldown(btn, ms=300){
   _cool = setTimeout(()=>{ _resetting=false; btn && (btn.disabled=false); }, ms);
 }
 
-runBtn  && (runBtn.onclick  = ()=>{ if (_resetting) return; interp.run();  });
+runBtn && (runBtn.onclick = () => {
+  if (_resetting) return;
+  // 実行
+  interp.run();
+  // Mainのコマンドをクリア
+  programList.innerHTML = "";
+});
+
 stepBtn && (stepBtn.onclick = ()=>{ if (_resetting) return; interp.step(); });
 stopBtn && (stopBtn.onclick = ()=>{ interp.stop(); });
 
+/*
 resetBtn && (resetBtn.onclick = ()=>{
   if (_resetting) return;
   cooldown(resetBtn, 300);
@@ -221,6 +269,7 @@ resetBtn && (resetBtn.onclick = ()=>{
   // ★ リスタート時にMainを全消し
   try{ programList.innerHTML = ""; }catch(e){}
 });
+*/
 
 exitBtn && (exitBtn.onclick = ()=>{
   try{ interp.stop?.(); }catch(e){}
