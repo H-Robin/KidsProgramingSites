@@ -21,7 +21,7 @@ body {
 /* レイアウト */
 #app{
   display:grid;
-  grid-template-columns: minmax(660px, 1fr) 300px; /* 左フィールド / 右サイドバー */
+  grid-template-columns: clamp(400px, 50vw, 800px) 280px;
   grid-template-rows: 100dvh;
   height: 100dvh;
 }

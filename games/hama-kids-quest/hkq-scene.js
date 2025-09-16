@@ -59,11 +59,13 @@ export class HkqScene extends Phaser.Scene {
     const W = this.scale.gameSize.width;
     const H = this.scale.gameSize.height;
 
-    const leftW = Math.floor(W * 0.70);
+    const leftW = Math.floor(W * 0.90);
     const pad = 16;
 
-    const availW = leftW - pad*2;
-    const availH = H     - pad*2;
+　  // フィールドの最大横幅を制限（縮小の上限）
+　  const FIELD_MAX_W = 800; // ← 500〜600 の間で好みに調整
+　  const availW = Math.min(leftW - pad*2, FIELD_MAX_W);
+   const availH = H     - pad*2;
 
     // 80%程度に縮めて見切れ防止
     const cell = Math.floor(Math.min(availW/this.gridW, availH/this.gridH) * 0.8);
