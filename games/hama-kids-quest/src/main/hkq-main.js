@@ -1,6 +1,6 @@
-import { createPalette } from "./src/common/ui/palette.js";
-import { Interpreter } from "./src/common/engine/interpreter.js";
-import { HkqScene } from './src/scene/hkq-scene.js';
+import { createPalette } from "../common/ui/palette.js";
+import { Interpreter } from "../common/engine/interpreter.js";
+import { HkqScene } from '../scene/hkq-scene.js';
 
 // ===== Phaser 設定 =====
 const config = {
