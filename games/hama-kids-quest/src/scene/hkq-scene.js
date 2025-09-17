@@ -16,7 +16,7 @@ export class HkqScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.json('levels', 'hkq-levels.json');
+    this.load.json('levels', 'assets/data/hkq-levels.json');
 
     // 画像アセット
     this.load.image('robot_idle0', 'assets/robot/idle/character_robot_idle0.png');
