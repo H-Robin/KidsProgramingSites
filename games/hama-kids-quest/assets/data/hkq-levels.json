@@ -28,7 +28,7 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   },
   {
     "id": "M2-ZigZag",
@@ -59,7 +59,7 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   },
   {
     "id": "M3-Perimeter",
@@ -90,7 +90,7 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   },
   {
     "id": "M4-Diagonal",
@@ -121,7 +121,7 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   },
   {
     "id": "M5-Random",
@@ -152,6 +152,6 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   }
 ]

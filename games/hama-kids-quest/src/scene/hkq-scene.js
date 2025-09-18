@@ -124,6 +124,112 @@ export class HkqScene extends Phaser.Scene {
       this.load.start();
     }
   }
+
+/**
+ * ミッション進行中のカットシーン（遷移なし）
+ * path: 画像パス, next: 再生後コールバック
+ */
+playMidCutscene(path, next) {
+  if (this._cutscenePlaying) return;
+  this._cutscenePlaying = true;
+
+  if (!path) { this._cutscenePlaying = false; next?.(); return; }
+
+  const texKey = `mid:${path}`;
+  const startShow = () => {
+    const cam = this.cameras.main;
+    const cx = cam.worldView.centerX ?? cam.centerX;
+    const cy = cam.worldView.centerY ?? cam.centerY;
+
+    const node = this.add.image(cx, cy, texKey)
+      .setScrollFactor(0)
+      .setDepth(10000)
+      .setOrigin(0.5, 0.5)
+      .setAlpha(0);
+
+    // 画面にフィット
+    const vw = cam.width, vh = cam.height;
+    const iw = node.width || 1024, ih = node.height || 512;
+    const scale = Math.min(vw * 0.95 / iw, vh * 0.95 / ih);
+    node.setScale(scale);
+
+    // フェードイン(0.5) → 表示(1.0) → フェードアウト(0.5)
+    this.tweens.add({
+      targets: node, alpha: 1, duration: 500, ease: 'quad.out',
+      onComplete: () => {
+        this.time.delayedCall(1000, () => {
+          this.tweens.add({
+            targets: node, alpha: 0, duration: 500, ease: 'quad.in',
+            onComplete: () => {
+              node.destroy();
+              this._cutscenePlaying = false;
+              next?.();
+            }
+          });
+        });
+      }
+    });
+  };
+
+  if (this.textures.exists(texKey)) { startShow(); }
+  else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
+} 
+  /**
+ * 失敗カットシーンを再生してから next() を呼ぶ
+ * path: 画像ファイルパス
+ */
+playFailCutscene(path, next) {
+  if (!path) { next?.(); return; }
+
+  const texKey = `fail:${path}`;
+  const startShow = () => {
+    const cam = this.cameras.main;
+    const cx = cam.worldView.centerX ?? cam.centerX;
+    const cy = cam.worldView.centerY ?? cam.centerY;
+
+    const node = this.add.image(cx, cy, texKey)
+      .setScrollFactor(0)
+      .setDepth(10000)
+      .setOrigin(0.5, 0.5)
+      .setAlpha(0);
+
+    const vw = cam.width, vh = cam.height;
+    const iw = node.width || 1024, ih = node.height || 512;
+    const scale = Math.min(vw * 0.95 / iw, vh * 0.95 / ih);
+    node.setScale(scale);
+
+    // フェードイン → 表示 → フェードアウト
+    this.tweens.add({
+      targets: node,
+      alpha: 1,
+      duration: 500,
+      ease: 'quad.out',
+      onComplete: () => {
+        this.time.delayedCall(1300, () => {
+          this.tweens.add({
+            targets: node,
+            alpha: 0,
+            duration: 500,
+            ease: 'quad.in',
+            onComplete: () => {
+              node.destroy();
+              next?.();
+            }
+          });
+        });
+      }
+    });
+  };
+
+  if (this.textures.exists(texKey)) {
+    startShow();
+  } else {
+    this.load.once('complete', startShow);
+    this.load.image(texKey, path);
+    this.load.start();
+  }
+}
+
   create() {
     this.levels = loadLevels(this);
     this.missionIndex = 0;
@@ -472,24 +578,29 @@ export class HkqScene extends Phaser.Scene {
         // 2) ENEMY（同マスにいる？）
         const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
         if (enemy) {
-          if (this.inventory.weapon) {
-            // 撃破→キー入手（初回のみ）
-            try { enemy.spr.destroy(); } catch(_) {}
-            this.monsters = this.monsters.filter(m => m !== enemy);
-            document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail:{ type:'monster-a' }}));
+          if (this.inventory.weapon){
+            // ★ 先に途中演出を再生 → 終了後に撃破処理
+            this.playMidCutscene('assets/cutscene/monster_battle.png', () => {
+              try { enemy.spr.destroy(); } catch(_) {}
+              this.monsters = this.monsters.filter(m => m !== enemy);
+              document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail:{ type:'monster-a' }}));
 
-            if (!this.inventory.key) {
-              this.inventory.key = true;
-              this.renderItemBox();
-              document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
-            }
+              if (!this.inventory.key) {
+                this.inventory.key = true;
+                this.renderItemBox();
+                document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
+              }
 
-            this.robotSpr.play('robot_idle', true);
-            document.dispatchEvent(new CustomEvent('hkq:tick'));
+              this.robotSpr.play('robot_idle', true);
+              document.dispatchEvent(new CustomEvent('hkq:tick'));
+            });
             return;
           } else {
             // 武器なし → 失敗＆リスタート
-            this.showMissionFailAndRestart('モンスターにやられた…');
+//            this.showMissionFailAndRestart('モンスターにやられた…');
+            this.playFailCutscene('assets/cutscene/mission-failed1.png', () => {
+              this.scene.restart({ missionIndex: this.missionIndex });
+             });
             return;
           }
         }
@@ -501,7 +612,10 @@ export class HkqScene extends Phaser.Scene {
             this.playCutsceneThen(() => this.handleGoalReached());
             return;
           } else {
-            this.showMissionFailAndRestart('カードキーが必要だ…');
+//            this.showMissionFailAndRestart('カードキーが必要だ…');
+            this.playFailCutscene('assets/cutscene/mission-failed2.png', () => {  
+              this.scene.restart({ missionIndex: this.missionIndex });
+            });
             return;
           }
         }
