@@ -5,7 +5,19 @@
     "gridH": 5,
     "uniformH": 0,
     "robot": { "x": 0, "y": 2, "dir": 1 },
-    "goalSpec": { "pattern": "line", "count": 3, "minDistance": 3 }
+    "goalSpec": { "pattern": "line", "count": 3, "minDistance": 5 },
+    "clear": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "id": "reach_base",
+            "type": "reach",
+            "target": "lunar_base",
+            "requires": [],
+            "text": "月面基地へ向かう"
+          }
+        ]
+    }
   },
   {
     "id": "M2-ZigZag",
@@ -13,7 +25,19 @@
     "gridH": 5,
     "uniformH": 1,
     "robot": { "x": 0, "y": 0, "dir": 1 },
-    "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 3 }
+    "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 5 },
+    "clear": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "id": "reach_base",
+            "type": "reach",
+            "target": "lunar_base",
+            "requires": [],
+            "text": "月面基地へ向かう"
+          }
+        ]
+    }
   },
   {
     "id": "M3-Perimeter",
@@ -21,7 +45,19 @@
     "gridH": 6,
     "uniformH": 2,
     "robot": { "x": 3, "y": 3, "dir": 0 },
-    "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 3 }
+    "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 5 },
+    "clear": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "id": "reach_base",
+            "type": "reach",
+            "target": "lunar_base",
+            "requires": [],
+            "text": "月面基地へ向かう"
+          }
+        ]
+    }
   },
   {
     "id": "M4-Diagonal",
@@ -29,7 +65,19 @@
     "gridH": 7,
     "uniformH": 3,
     "robot": { "x": 1, "y": 5, "dir": 1 },
-    "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 3 }
+    "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 4 },
+    "clear": {
+      "logic": "OR",
+      "conditions": [
+        {
+          "id": "reach_base",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": [],
+          "text": "月面基地へ向かう"
+        }
+      ]
+    }
   },
   {
     "id": "M5-Random",
@@ -37,6 +85,18 @@
     "gridH": 5,
     "uniformH": 4,
     "robot": { "x": 3, "y": 2, "dir": 2 },
-    "goalSpec": { "pattern": "random", "count": 5, "minDistance": 3 }
+    "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
+    "clear": {
+      "logic": "OR",
+      "conditions": [
+        {
+          "id": "reach_base",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": [],
+          "text": "月面基地へ向かう"
+        }
+      ]
+    }
   }
 ]

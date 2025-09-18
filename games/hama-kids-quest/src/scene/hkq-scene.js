@@ -94,6 +94,7 @@ export class HkqScene extends Phaser.Scene {
 
   buildLevel(showTitle) {
     const L = this.levels[this.missionIndex] || {};
+    this.level = L; // ← Mission側に渡すため保持
     this.gridW = L.gridW ?? 6;
     this.gridH = L.gridH ?? 8;
 
@@ -157,6 +158,19 @@ export class HkqScene extends Phaser.Scene {
     this.robotCell = { ...this.startCell };
     this._cleared = false;
 
+    // クリア条件パネルに初期文言（あれば）を表示
+    try {
+      const t = document.getElementById('mission-clear-text');
+      if (t) {
+        const conds = this.level?.clear?.conditions || [];
+        if (conds.length) {
+          t.innerHTML = conds.map(c => 
+            `<div class="cc-item"><span class="cc-check">⬜️</span><span class="cc-text">${c.text}</span></div>`
+          ).join('');
+        }
+      }
+    } catch(_) {}
+
     this.emitMissionStart();
     if (showTitle) {
       const title = `ミッション ${this.missionIndex + 1}: ${L.id ?? ''}`;
@@ -169,7 +183,7 @@ export class HkqScene extends Phaser.Scene {
   emitMissionStart() {
     document.dispatchEvent(
       new CustomEvent('hkq:mission-start', {
-        detail: { mission: this.missionIndex }
+        detail: { mission: this.missionIndex, level: this.level }
       })
     );
   }
@@ -261,6 +275,9 @@ export class HkqScene extends Phaser.Scene {
     const ny = Phaser.Math.Clamp(this.robotCell.y + dir.dy, 0, this.gridH - 1);
     this.robotCell = { x: nx, y: ny };
 
+    // 移動イベント（セル座標）
+    document.dispatchEvent(new CustomEvent('hkq:move', { detail: { pos: { x: nx, y: ny } } }));
+
     this.showDirectionIcon(op, nx, ny);
 
     const p = this.cellToXY(nx, ny);
@@ -271,8 +288,15 @@ export class HkqScene extends Phaser.Scene {
       duration: 260, ease: 'quad.out',
       onComplete: () => {
         if (this._cleared) return;
-        if (this.isAtGoal()) this.handleGoalReached();
-        else this.robotSpr.play('robot_idle', true);
+        if (this.isAtGoal()) {
+          // ゴール到達通知（Mission層での reach 条件評価用）
+          document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: nx, y: ny } } }));
+          this.handleGoalReached(); // 既存の演出/遷移は維持
+        } else {
+          this.robotSpr.play('robot_idle', true);
+          // アクション完了の汎用 tick（UI再描画や評価用）
+          document.dispatchEvent(new CustomEvent('hkq:tick'));
+        }
       },
     });
   }

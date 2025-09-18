@@ -24,7 +24,11 @@
     <div id="mission-label" class="mission">ミッション 1</div>
     <div id="elapsed" class="elapsed">00:00</div>
   </header>
-
+    <!-- ミッションクリア条件パネル -->
+    <section id="mission-clear" class="pane mission-clear">
+      <h3>Mission</h3>
+      <div id="mission-clear-text">ロボットを月面基地へ向かうこと</div>
+    </section>
   <div id="app">
     <!-- 左：フィールド（キャンバスが全域にフィット） -->
     <div id="stage-left">
@@ -48,6 +52,15 @@
       <!--    <button id="reset">↻ リスタート</button>  削除-->
           <button id="exit">⏹ 終了</button>
         </div>
+      </div>
+      <div class="pane">
+        <h3>アイテムBOX</h3>
+          <div id="item-box">
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+            <div class="slot"></div>
+          </div>
       </div>
     </aside>
   </div>

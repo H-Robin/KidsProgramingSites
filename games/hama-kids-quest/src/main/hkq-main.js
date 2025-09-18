@@ -2,6 +2,11 @@ import { createPalette } from "../common/ui/palette.js";
 import { Interpreter } from "../common/engine/interpreter.js";
 import { HkqScene } from '../scene/hkq-scene.js';
 
+import { Mission } from '../scene/hkq-mission.js';
+
+let mission = null;
+// あとは Scene がイベントを投げるたびに、Mission が自動でUI更新＆判定
+
 // ===== Phaser 設定 =====
 const config = {
   type: Phaser.AUTO,
@@ -299,6 +304,14 @@ exitBtn && (exitBtn.onclick = ()=>{
 
 // ===== タイトルバー更新／クリア時の後処理 =====
 document.addEventListener("hkq:mission-start", (e)=>{
+     // ← ここで Scene から渡された level を受け取り、Mission を初期化
+   const level = e.detail?.level;
+   if (level) {
+     if (!mission) mission = new Mission(level);
+     else mission.reset(level);         // ← ここがポイント
+     // クリア条件パネルの初期表示（任意）
+     mission.render?.();
+   }
   const titleEl   = document.getElementById("game-title");
   const missionEl = document.getElementById("mission-label");
   const elapsedEl = document.getElementById("elapsed");
