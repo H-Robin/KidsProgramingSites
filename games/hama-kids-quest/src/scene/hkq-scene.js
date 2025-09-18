@@ -28,6 +28,9 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('robot_cheer1', 'assets/robot/cheer/character_robot_cheer1.png');
     this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
 
+    // monster-a idle frames
+    this.load.image('monsterA_idle1', 'assets/enemy/monster-a/idle/idle1.png');
+    this.load.image('monsterA_idle2', 'assets/enemy/monster-a/idle/idle2.png');    
     // 床タイル
     this.load.image('floor_moon', 'assets/floor/moon.png');
 
@@ -88,6 +91,12 @@ export class HkqScene extends Phaser.Scene {
     this.anims.create({ key: 'robot_idle', frames: [{ key: 'robot_idle0' }, { key: 'robot_idle1' }], frameRate: 2, repeat: -1 });
     this.anims.create({ key: 'robot_walk', frames: Array.from({ length: 8 }, (_, i) => ({ key: `robot_walk${i}` })), frameRate: 10, repeat: -1 });
     this.anims.create({ key: 'robot_cheer', frames: [{ key: 'robot_cheer0' }, { key: 'robot_cheer1' }], frameRate: 6, repeat: -1 });
+    this.anims.create({
+      key: 'monsterA_idle',
+      frames: [{ key: 'monsterA_idle1' }, { key: 'monsterA_idle2' }],
+      frameRate: 2,
+      repeat: -1
+    });
   }
 
   snap(v) { return Math.round(v); }
@@ -157,6 +166,60 @@ export class HkqScene extends Phaser.Scene {
     this.cellSize = cell;
     this.robotCell = { ...this.startCell };
     this._cleared = false;
+    // 既存モンスターの後始末（リビルド対策）
+    if (this.monsters && this.monsters.length) {
+      this.monsters.forEach(s => { try { s.destroy(); } catch(_){} });
+    }
+    this.monsters = [];
+
+    // 占有セル集合（重なり回避）
+    const occupied = new Set();
+    const occKey = (x,y)=>`${x},${y}`;
+    occupied.add(occKey(this.startCell.x, this.startCell.y));
+    occupied.add(occKey(this.goalCell.x,  this.goalCell.y));
+
+    // ランダム空きセルを一つ取るヘルパ
+    const pickFreeCell = () => {
+      for (let tries=0; tries<100; tries++){
+        const rx = Phaser.Math.Between(0, this.gridW-1);
+        const ry = Phaser.Math.Between(0, this.gridH-1);
+        const k = occKey(rx,ry);
+        if (!occupied.has(k)) {
+          occupied.add(k);
+          return {x:rx, y:ry};
+        }
+      }
+      // フォールバック（最悪、スタートから掃く）
+      for (let y=0; y<this.gridH; y++){
+        for (let x=0; x<this.gridW; x++){
+          const k = occKey(x,y);
+          if (!occupied.has(k)) { occupied.add(k); return {x,y}; }
+        }
+      }
+      return null;
+    };
+
+    // レベル定義からモンスター数を取得（未指定は0）
+    const enemyDefs = Array.isArray(this.level?.enemies) ? this.level.enemies : [];
+    enemyDefs.forEach(def=>{
+      const type = def.type || 'monster-a';
+      const count = Math.max(0, def.count|0 || 0);
+      for (let i=0; i<count; i++){
+        const cell = pickFreeCell();
+        if (!cell) break;
+
+        const pos = this.cellToXY(cell.x, cell.y);
+        const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'monsterA_idle1')
+          .setOrigin(0.5, 1)
+          .setDepth(8) // goal(5)とrobot(10)の間
+          .setDisplaySize(Math.floor(this._isoW * 1.2), Math.floor(this._isoH * 1.6)) /* monster size */
+          .play('monsterA_idle', true);
+
+        this.fieldLayer.add(spr);
+        // 管理用に保持（将来の当たり判定などで利用）
+        (this.monsters || (this.monsters=[])).push({ type, cell, spr });
+      }
+    });
 
     // クリア条件パネルに初期文言（あれば）を表示
     try {
