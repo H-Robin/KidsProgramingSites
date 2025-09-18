@@ -63,6 +63,67 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('arrow-sw', 'assets/direction/arrow-sw.png');
   }
 
+      /**
+   * ミッションクリア時カットシーンを再生してから next() を呼ぶ
+   * フェードイン0.5s → 表示1.0s → フェードアウト0.5s
+   */
+  playCutsceneThen(next) {
+    const imgPath = this.level?.cutscene?.image;
+    if (!imgPath) { next?.(); return; }
+
+    // ミッションごとにユニークなテクスチャキーにする
+    const texKey = `cutscene:${this.level.id}`;
+    const startShow = () => {
+      const cam = this.cameras.main;
+      const cx = cam.worldView.centerX ?? cam.centerX;
+      const cy = cam.worldView.centerY ?? cam.centerY;
+
+      const node = this.add.image(cx, cy, texKey)
+        .setScrollFactor(0)
+        .setDepth(10000)
+        .setOrigin(0.5, 0.5)
+        .setAlpha(0);
+
+      // 画面サイズに合わせて軽くスケール（任意）
+      const vw = cam.width, vh = cam.height;
+      const iw = node.width || 1024, ih = node.height || 512;
+      const scale = Math.min(vw * 0.95 / iw, vh * 0.95 / ih);
+      node.setScale(scale);
+
+      // フェードイン → 表示 → フェードアウト（timeline を使わない版）
+      this.tweens.add({
+        targets: node,
+        alpha: 1,
+        duration: 500,
+        ease: 'quad.out',
+        onComplete: () => {
+          // 表示キープ 1.0s
+          this.time.delayedCall(1000, () => {
+            // フェードアウト 0.5s
+            this.tweens.add({
+              targets: node,
+              alpha: 0,
+              duration: 500,
+              ease: 'quad.in',
+              onComplete: () => {
+                node.destroy();
+                next?.();
+              }
+            });
+          });
+        }
+      });
+    };
+
+    // すでに読み込み済みなら即再生、未ロードなら動的ロード
+    if (this.textures.exists(texKey)) {
+      startShow();
+    } else {
+      this.load.once('complete', startShow);
+      this.load.image(texKey, imgPath);
+      this.load.start();
+    }
+  }
   create() {
     this.levels = loadLevels(this);
     this.missionIndex = 0;
@@ -437,7 +498,7 @@ export class HkqScene extends Phaser.Scene {
         if (this.isAtGoal()) {
           if (this.inventory.key) {
             document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail:{ pos:{ x: cx, y: cy }}}));
-            this.handleGoalReached(); // 既存の演出でOK
+            this.playCutsceneThen(() => this.handleGoalReached());
             return;
           } else {
             this.showMissionFailAndRestart('カードキーが必要だ…');
@@ -476,24 +537,25 @@ export class HkqScene extends Phaser.Scene {
     }
   }
 
-  showMissionFailAndRestart(message='Mission失敗'){
-  // 失敗UI（軽いトースト）
-  try {
-    const el = document.getElementById('mission-clear-text');
-    if (el){
-      const div = document.createElement('div');
-      div.textContent = `【${message}】`;
-      div.style.color = '#c00';
-      div.style.fontWeight = 'bold';
-      div.style.marginTop = '6px';
-      el.appendChild(div);
-    }
-  } catch(_){}
+    showMissionFailAndRestart(message='Mission失敗'){
+    // 失敗UI（軽いトースト）
+    try {
+      const el = document.getElementById('mission-clear-text');
+      if (el){
+        const div = document.createElement('div');
+        div.textContent = `【${message}】`;
+        div.style.color = '#c00';
+        div.style.fontWeight = 'bold';
+        div.style.marginTop = '6px';
+        el.appendChild(div);
+      }
+    } catch(_){}
 
-  // 少し待ってリスタート
-  this.time.delayedCall(700, ()=>{
-    this.scene.restart({ missionIndex: this.missionIndex }); // 既存の再読込に合わせて調整
-  });
-}
+    // 少し待ってリスタート
+    this.time.delayedCall(700, ()=>{
+      this.scene.restart({ missionIndex: this.missionIndex }); // 既存の再読込に合わせて調整
+    });
+  }
+
 }
 

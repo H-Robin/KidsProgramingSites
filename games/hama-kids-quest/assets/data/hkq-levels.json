@@ -27,7 +27,8 @@
           "text": "カードキーを持って月面基地へ向かう"
         }
       ]
-    }
+    },
+    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
   },
   {
     "id": "M2-ZigZag",
@@ -57,7 +58,8 @@
           "text": "カードキーを持って月面基地へ向かう"
         }
       ]
-    }
+    },
+    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
   },
   {
     "id": "M3-Perimeter",
@@ -87,7 +89,8 @@
           "text": "カードキーを持って月面基地へ向かう"
         }
       ]
-    }
+    },
+    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
   },
   {
     "id": "M4-Diagonal",
@@ -117,7 +120,8 @@
           "text": "カードキーを持って月面基地へ向かう"
         }
       ]
-    }
+    },
+    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
   },
   {
     "id": "M5-Random",
@@ -147,6 +151,7 @@
           "text": "カードキーを持って月面基地へ向かう"
         }
       ]
-    }
+    },
+    "cutscene": { "image": "assets/cutscene/monster_battle.png" }
   }
 ]
