@@ -7,14 +7,25 @@
     "robot": { "x": 0, "y": 2, "dir": 1 },
     "goalSpec": { "pattern": "line", "count": 3, "minDistance": 5 },
     "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
-      "logic": "OR",
+      "logic": "AND",
       "conditions": [
-        { "id": "reach_base", 
-          "type": "reach", 
-          "target": "lunar_base", 
-          "requires": [], 
-          "text": "月面基地へ向かう" }
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "count": 1,
+          "requires": ["weapon"],
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_base",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "text": "カードキーを持って月面基地へ向かう"
+        }
       ]
     }
   },
@@ -26,17 +37,26 @@
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 5 },
     "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
-        "logic": "OR",
-        "conditions": [
-          {
-            "id": "reach_base",
-            "type": "reach",
-            "target": "lunar_base",
-            "requires": [],
-            "text": "月面基地へ向かう"
-          }
-        ]
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "count": 1,
+          "requires": ["weapon"],
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_base",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
     }
   },
   {
@@ -47,17 +67,26 @@
     "robot": { "x": 3, "y": 3, "dir": 0 },
     "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 5 },
     "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
-        "logic": "OR",
-        "conditions": [
-          {
-            "id": "reach_base",
-            "type": "reach",
-            "target": "lunar_base",
-            "requires": [],
-            "text": "月面基地へ向かう"
-          }
-        ]
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "count": 1,
+          "requires": ["weapon"],
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_base",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
     }
   },
   {
@@ -68,15 +97,24 @@
     "robot": { "x": 1, "y": 5, "dir": 1 },
     "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 4 },
     "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
-      "logic": "OR",
+      "logic": "AND",
       "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "count": 1,
+          "requires": ["weapon"],
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
         {
           "id": "reach_base",
           "type": "reach",
           "target": "lunar_base",
-          "requires": [],
-          "text": "月面基地へ向かう"
+          "requires": ["key"],
+          "text": "カードキーを持って月面基地へ向かう"
         }
       ]
     }
@@ -89,15 +127,24 @@
     "robot": { "x": 3, "y": 2, "dir": 2 },
     "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
     "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
-      "logic": "OR",
+      "logic": "AND",
       "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "count": 1,
+          "requires": ["weapon"],
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
         {
           "id": "reach_base",
           "type": "reach",
           "target": "lunar_base",
-          "requires": [],
-          "text": "月面基地へ向かう"
+          "requires": ["key"],
+          "text": "カードキーを持って月面基地へ向かう"
         }
       ]
     }

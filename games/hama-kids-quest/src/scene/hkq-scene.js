@@ -15,6 +15,26 @@ export class HkqScene extends Phaser.Scene {
     super('HkqScene');
   }
 
+  occKey(x,y){ return `${x},${y}`; }
+  addOccupied(set,x,y){ set.add(this.occKey(x,y)); }
+  pickFreeCell(occupied){
+    // ランダム100回トライ
+    for (let i=0;i<100;i++){
+      const x = Phaser.Math.Between(0, this.gridW-1);
+      const y = Phaser.Math.Between(0, this.gridH-1);
+      const k = this.occKey(x,y);
+      if (!occupied.has(k)) { occupied.add(k); return {x,y}; }
+    }
+    // 総当たりフォールバック
+    for (let y=0;y<this.gridH;y++){
+      for (let x=0;x<this.gridW;x++){
+        const k=this.occKey(x,y);
+        if(!occupied.has(k)){ occupied.add(k); return {x,y}; }
+      }
+    }
+    return null;
+  }
+
   preload() {
     this.load.json('levels', 'assets/data/hkq-levels.json');
 
@@ -27,7 +47,9 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('robot_cheer0', 'assets/robot/cheer/character_robot_cheer0.png');
     this.load.image('robot_cheer1', 'assets/robot/cheer/character_robot_cheer1.png');
     this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
-
+    // ゲートカード & ブラスター
+    this.load.image('key_icon',    'assets/items/gatecard.png');
+    this.load.image('weapon_icon', 'assets/weapon/blaster-a.png');
     // monster-a idle frames
     this.load.image('monsterA_idle1', 'assets/enemy/monster-a/idle/idle1.png');
     this.load.image('monsterA_idle2', 'assets/enemy/monster-a/idle/idle2.png');    
@@ -166,6 +188,10 @@ export class HkqScene extends Phaser.Scene {
     this.cellSize = cell;
     this.robotCell = { ...this.startCell };
     this._cleared = false;
+    // 古いピックアップ破棄
+    if (this.weaponSpr) { try{ this.weaponSpr.destroy(); }catch(_){} this.weaponSpr=null; }
+    this.weaponCell = null;
+
     // 既存モンスターの後始末（リビルド対策）
     if (this.monsters && this.monsters.length) {
       this.monsters.forEach(s => { try { s.destroy(); } catch(_){} });
@@ -178,6 +204,22 @@ export class HkqScene extends Phaser.Scene {
     occupied.add(occKey(this.startCell.x, this.startCell.y));
     occupied.add(occKey(this.goalCell.x,  this.goalCell.y));
 
+
+    // --- WEAPON（ブラスター）をランダム配置 ---
+    const pickupDefs = Array.isArray(this.level?.pickups) ? this.level.pickups : [];
+    const weaponDef = pickupDefs.find(p => p.type === 'weapon');
+    if (weaponDef && (weaponDef.count|0) > 0){
+      const cell = this.pickFreeCell(occupied);
+      if (cell){
+        this.weaponCell = cell;
+        const pos = this.cellToXY(cell.x, cell.y);
+        this.weaponSpr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'weapon_icon')
+          .setOrigin(0.5, 1)
+          .setDepth(9)
+          .setDisplaySize(Math.floor(this._isoW*0.8), Math.floor(this._isoH*0.9));
+        this.fieldLayer.add(this.weaponSpr);
+      }
+    }
     // ランダム空きセルを一つ取るヘルパ
     const pickFreeCell = () => {
       for (let tries=0; tries<100; tries++){
@@ -199,6 +241,9 @@ export class HkqScene extends Phaser.Scene {
       return null;
     };
 
+    // --- アイテムボックス（インベントリUI）初期化 ---
+    this.inventory = { weapon:false, key:false };
+    this.renderItemBox();
     // レベル定義からモンスター数を取得（未指定は0）
     const enemyDefs = Array.isArray(this.level?.enemies) ? this.level.enemies : [];
     enemyDefs.forEach(def=>{
@@ -351,16 +396,59 @@ export class HkqScene extends Phaser.Scene {
       duration: 260, ease: 'quad.out',
       onComplete: () => {
         if (this._cleared) return;
-        if (this.isAtGoal()) {
-          // ゴール到達通知（Mission層での reach 条件評価用）
-          document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: nx, y: ny } } }));
-          this.handleGoalReached(); // 既存の演出/遷移は維持
-        } else {
-          this.robotSpr.play('robot_idle', true);
-          // アクション完了の汎用 tick（UI再描画や評価用）
-          document.dispatchEvent(new CustomEvent('hkq:tick'));
+
+        const cx = nx, cy = ny;
+
+        // 1) WEAPON拾得（同マス＆未取得なら）
+        if (this.weaponCell && cx === this.weaponCell.x && cy === this.weaponCell.y && !this.inventory.weapon) {
+          this.inventory.weapon = true;
+          try { this.weaponSpr?.destroy(); } catch(_) {}
+          this.weaponSpr = null;
+          this.renderItemBox();
+          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'weapon' }}));
         }
-      },
+
+        // 2) ENEMY（同マスにいる？）
+        const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
+        if (enemy) {
+          if (this.inventory.weapon) {
+            // 撃破→キー入手（初回のみ）
+            try { enemy.spr.destroy(); } catch(_) {}
+            this.monsters = this.monsters.filter(m => m !== enemy);
+            document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail:{ type:'monster-a' }}));
+
+            if (!this.inventory.key) {
+              this.inventory.key = true;
+              this.renderItemBox();
+              document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
+            }
+
+            this.robotSpr.play('robot_idle', true);
+            document.dispatchEvent(new CustomEvent('hkq:tick'));
+            return;
+          } else {
+            // 武器なし → 失敗＆リスタート
+            this.showMissionFailAndRestart('モンスターにやられた…');
+            return;
+          }
+        }
+
+        // 3) GOAL（鍵が必要）
+        if (this.isAtGoal()) {
+          if (this.inventory.key) {
+            document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail:{ pos:{ x: cx, y: cy }}}));
+            this.handleGoalReached(); // 既存の演出でOK
+            return;
+          } else {
+            this.showMissionFailAndRestart('カードキーが必要だ…');
+            return;
+          }
+        }
+
+        // 4) 通常
+        this.robotSpr.play('robot_idle', true);
+        document.dispatchEvent(new CustomEvent('hkq:tick'));
+      }
     });
   }
 
@@ -370,4 +458,42 @@ export class HkqScene extends Phaser.Scene {
     const OFFSET_Y = -10;
     return { x: this.snap(sx), y: this.snap(sy + OFFSET_Y) };
   }
+  renderItemBox(){
+    const box = document.getElementById('item-box');
+    if (!box) return;
+    const slots = box.querySelectorAll('.slot');
+    // 全スロット初期化
+    slots.forEach(s=>{ s.classList.remove('on'); s.innerHTML=''; });
+    // weapon
+    if (this.inventory.weapon && slots[0]){
+      slots[0].classList.add('on');
+      slots[0].innerHTML = `<img src="assets/weapon/blaster-a.png" alt="weapon" style="width:90%;height:auto;">`;
+    }
+    // key
+    if (this.inventory.key && slots[1]){
+      slots[1].classList.add('on');
+      slots[1].innerHTML = `<img src="assets/items/gatecard.png" alt="key" style="width:90%;height:auto;">`;
+    }
+  }
+
+  showMissionFailAndRestart(message='Mission失敗'){
+  // 失敗UI（軽いトースト）
+  try {
+    const el = document.getElementById('mission-clear-text');
+    if (el){
+      const div = document.createElement('div');
+      div.textContent = `【${message}】`;
+      div.style.color = '#c00';
+      div.style.fontWeight = 'bold';
+      div.style.marginTop = '6px';
+      el.appendChild(div);
+    }
+  } catch(_){}
+
+  // 少し待ってリスタート
+  this.time.delayedCall(700, ()=>{
+    this.scene.restart({ missionIndex: this.missionIndex }); // 既存の再読込に合わせて調整
+  });
 }
+}
+
