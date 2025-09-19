@@ -47,6 +47,12 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('robot_cheer0', 'assets/robot/cheer/character_robot_cheer0.png');
     this.load.image('robot_cheer1', 'assets/robot/cheer/character_robot_cheer1.png');
     this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
+
+    // hkq-scene.js / preload()
+    this.load.image('robot_sad1', 'assets/robot/sad/sad1.png');
+    this.load.image('robot_sad2', 'assets/robot/sad/sad2.png');
+    this.load.image('robot_sad3', 'assets/robot/sad/sad3.png');
+
     // ゲートカード & ブラスター
     this.load.image('key_icon',    'assets/items/gatecard.png');
     this.load.image('weapon_icon', 'assets/weapon/blaster-a.png');
@@ -286,6 +292,12 @@ playFailCutscene(path, next) {
       frameRate: 2,
       repeat: -1
     });
+    this.anims.create({
+      key: 'robot_sad',
+      frames: [{ key: 'robot_sad1' }, { key: 'robot_sad2' }, { key: 'robot_sad3' }],
+      frameRate: 6,
+      repeat: -1
+    });
   }
 
   snap(v) { return Math.round(v); }
@@ -331,8 +343,10 @@ playFailCutscene(path, next) {
     });
     this.fieldLayer.add(tiles);
 
-    this.goalCell = pickGoalFromSpec(this.gridW, this.gridH, this.startCell, L.goalSpec);
-
+//    this.goalCell = pickGoalFromSpec(this.gridW, this.gridH, this.startCell, L.goalSpec);// 置き換え（直指定があれば使い、なければ従来どおり）
+    this.goalCell = (L.goal && Number.isFinite(L.goal.x) && Number.isFinite(L.goal.y))
+      ? { x: L.goal.x, y: L.goal.y }
+      : pickGoalFromSpec(this.gridW, this.gridH, this.startCell, L.goalSpec);
     this._isoW = isoW; this._isoH = isoH;
 
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
@@ -385,6 +399,24 @@ playFailCutscene(path, next) {
           .setDepth(9)
           .setDisplaySize(Math.floor(this._isoW*0.8), Math.floor(this._isoH*0.9));
         this.fieldLayer.add(this.weaponSpr);
+      }
+    }
+
+    // --- KEY（ゲートカード）をランダム配置 ---
+    this.keySpr && (()=>{ try{ this.keySpr.destroy(); }catch(_){} this.keySpr=null; })();
+    this.keyCell = null;
+
+    const keyDef = pickupDefs.find(p => p.type === 'key');
+    if (keyDef && (keyDef.count|0) > 0){
+      const cell = this.pickFreeCell(occupied); // 既存のヘルパを再利用
+      if (cell){
+        this.keyCell = cell;
+        const pos = this.cellToXY(cell.x, cell.y);
+        this.keySpr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'key_icon')
+          .setOrigin(0.5, 1)
+          .setDepth(9)
+          .setDisplaySize(Math.floor(this._isoW*0.8), Math.floor(this._isoH*0.9));
+        this.fieldLayer.add(this.keySpr);
       }
     }
     // ランダム空きセルを一つ取るヘルパ
@@ -574,7 +606,6 @@ playFailCutscene(path, next) {
           this.renderItemBox();
           document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'weapon' }}));
         }
-
         // 2) ENEMY（同マスにいる？）
         const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
         if (enemy) {
@@ -604,15 +635,23 @@ playFailCutscene(path, next) {
             return;
           }
         }
-
-        // 3) GOAL（鍵が必要）
+        // 3) KEY拾得（同マス＆未取得なら）
+        if (this.keyCell && cx === this.keyCell.x && cy === this.keyCell.y && !this.inventory.key) {
+          this.inventory.key = true;
+          try { this.keySpr?.destroy(); } catch(_) {}
+          this.keySpr = null;
+          this.renderItemBox();
+          // Mission 側のインベントリと連動（obtain 条件で評価される）
+          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
+        }
+        // 4) GOAL（鍵が必要）
         if (this.isAtGoal()) {
           if (this.inventory.key) {
             document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail:{ pos:{ x: cx, y: cy }}}));
             this.playCutsceneThen(() => this.handleGoalReached());
             return;
           } else {
-//            this.showMissionFailAndRestart('カードキーが必要だ…');
+            this.robotSpr.play('robot_sad', true); // しょんぼり表示
             this.playFailCutscene('assets/cutscene/mission-failed2.png', () => {  
               this.scene.restart({ missionIndex: this.missionIndex });
             });
