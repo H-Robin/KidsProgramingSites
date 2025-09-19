@@ -1,13 +1,68 @@
 // Interpreter — data-op 優先で Main を読み取り、repeatブロックを展開
+export class Runner {
+  constructor(scene){
+    this.scene = scene;
+    this.queue = [];       // 実行中のコマンド列
+    this.paused = false;   // ロック状態
+    this._bindLockEvents();
+  }
+  _bindLockEvents(){
+    document.addEventListener('hkq:lock',   () => { this.paused = true;  });
+    document.addEventListener('hkq:unlock', () => {
+      if (!this.paused) return;
+      this.paused = false;
+      this.tick(); // 再開時に次のコマンドを流す
+    });
+  }
+  enqueue(cmds){ this.queue.push(...cmds); }
+  tick(){
+    if (this.paused) return;              // ロック中は進めない
+    const op = this.queue.shift();
+    if (!op) return;
+    this.scene.onTick(op);                // ここでロボを動かす
+    setTimeout(()=>this.tick(), 0);       // 必要ならディレイ調整
+  }
+}
+
 export class Interpreter {
   constructor({ programList, onTick, onReset, tickDelay = 300 }){
     this.programList = programList;
     this.onTick = onTick;
     this.onReset = onReset;
-    this.timer = null;
-    this.ip = 0;
+    this.timer = null;         // setTimeout のハンドル
+    this.ip = 0;               // 現在の命令ポインタ
     this.tickDelay = tickDelay;
-    this._prog = [];
+    this._prog = [];           // 展開済みの命令列
+
+    // ★ ロック対応（hkq:lock / hkq:unlock）
+    this.paused = false;
+    this._lockDepth = 0;       // ネストに備える
+    this._bindLockEvents();
+  }
+
+  _bindLockEvents(){
+    document.addEventListener('hkq:lock',   () => {
+      this._lockDepth++;
+      this._applyPause(true);
+    });
+    document.addEventListener('hkq:unlock', () => {
+      if (this._lockDepth > 0) this._lockDepth--;
+      if (this._lockDepth === 0) this._applyPause(false);
+    });
+  }
+
+  _applyPause(flag){
+    this.paused = !!flag;
+    if (this.paused){
+      // 進行予約を止める（デキューしない）
+      if (this.timer){ clearTimeout(this.timer); this.timer = null; }
+      // _prog と ip は保持する（解除後に続きから）
+    }else{
+      // 再開：未了ならループを再セット
+      if (this._prog.length && this.ip < this._prog.length && !this.timer){
+        this.timer = setTimeout(()=>this._loop(), this.tickDelay);
+      }
+    }
   }
 
   // Main を読み取り：通常<li>はそのまま、repeatブロックは count × body内 を展開
@@ -38,21 +93,35 @@ export class Interpreter {
     this._prog = this.readProgram();
     this.ip = 0;
 
-    const tick = () => {
-      if (this.ip >= this._prog.length) { this.stop(); return; }
-      try { this.onTick?.(this._prog[this.ip++]); }
-      catch(e){ console.error("[Interpreter] onTick error:", e); }
-    };
+    // ロック中なら解除待ち（_applyPause が再開を担当）
+    if (this.paused) return;
 
-    const loop = () => {
-      if (!this.timer) return;
-      tick();
-      if (this.timer) this.timer = setTimeout(loop, this.tickDelay);
-    };
-    this.timer = setTimeout(loop, this.tickDelay);
+    this.timer = setTimeout(()=>this._loop(), this.tickDelay);
+  }
+
+  // 進行ループ本体
+  _loop(){
+    if (!this.timer) return;         // 停止済み
+    if (this.paused){                // 予防的ガード
+      clearTimeout(this.timer);
+      this.timer = null;
+      return;
+    }
+    if (this.ip >= this._prog.length){
+      this.stop();
+      return;
+    }
+
+    try { this.onTick?.(this._prog[this.ip++]); }
+    catch(e){ console.error("[Interpreter] onTick error:", e); }
+
+    if (this.timer) this.timer = setTimeout(()=>this._loop(), this.tickDelay);
   }
 
   step(){
+    // ロック中は単発実行もしない
+    if (this.paused) return;
+
     if (!this._prog.length || this.ip >= this._prog.length) {
       this._prog = this.readProgram();
       this.ip = 0;
