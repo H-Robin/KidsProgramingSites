@@ -77,24 +77,6 @@
     "cutscene": { "image": "assets/cutscene/mission-success1.png" }
   },
   {
-    "id": "T1-Line-Up",
-    "gridW": 1,
-    "gridH": 4,
-    "uniformH": 0,
-    "robot": { "x": 0, "y": 0, "dir": 2 },
-    "goal":  { "x": 0, "y": 0 },
-    "goalSpec": { "pattern": "line", "count": 1, "minDistance": 3 },
-    "enemies": [],
-    "pickups": [{ "type": "key", "count": 1 }],
-    "clear": {
-      "logic": "AND",
-      "conditions": [
-        { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
-      ]
-    },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
-  },
-  {
     "id": "M1-Line",
     "gridW": 7,
     "gridH": 5,

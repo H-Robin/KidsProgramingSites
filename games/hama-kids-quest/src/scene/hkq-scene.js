@@ -221,11 +221,19 @@ export class HkqScene extends Phaser.Scene {
     if (this.textures.exists(texKey)) startShow();
     else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
   }
-
+  init(data) {
+    // restart時に渡された missionIndex を引き継ぐ
+    if (data && Number.isFinite(data.missionIndex)) {
+      this.missionIndex = data.missionIndex;
+    }
+  }
   // ---- Scene lifecycle ----------------------------------------------------
   create() {
     this.levels = loadLevels(this);
-    this.missionIndex = 0;
+    // init(data) で受け取れていない（=初回起動など）のときだけ 0 をセット
+    if (typeof this.missionIndex !== 'number') {
+      this.missionIndex = 0;
+    }
 
     this.createAnimations();
     this.buildLevel(true);
