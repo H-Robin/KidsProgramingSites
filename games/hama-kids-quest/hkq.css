@@ -84,16 +84,23 @@ html, body { height:100%; }
 /* 命令パレット＆プログラム行をモジュール風に */
 .theme-mecha #palette .cmd, 
 .theme-mecha #program li {
-  background: linear-gradient(180deg, #89a6c1, #4e667f);
-  border: 1px solid rgba(120,180,255,.25);
+  background: linear-gradient(180deg, #3a4855, #101316);
+  border: 2.5px solid rgba(120,180,255,.25);
   border-radius: 10px;
   padding: .45rem .6rem;
-  box-shadow: inset 0 0 4px rgba(56,189,248,.08);
+  box-shadow: inset 0 0 4px rgba(211, 235, 246, 0.08);
 }
 
+.theme-mecha #palette .cmd:hover{
+  border-color: var(--accent-2);
+  background: linear-gradient(180deg, #facc15, #eab308); /* 鮮やかな黄色 */
+  color: #000; /* 文字を黒にしてコントラスト */
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.7); /* ネオン発光風 */
+  transform: scale(1.05); /* 少し大きく */
+}
 /* ボタン：メカニカルキー風（埋め込み、グロー、押下感） */
 .theme-mecha button {
-  background: linear-gradient(180deg, #132231, #0c1722);
+  background: linear-gradient(180deg, #132231, #16293c);
   color: var(--txt);
   border: 1px solid rgba(56,189,248,.35);
   border-radius: 12px;
@@ -102,7 +109,14 @@ html, body { height:100%; }
   box-shadow: var(--glow), inset 0 0 0 1px rgba(255,255,255,.06);
   transition: transform .04s ease, box-shadow .2s ease, filter .2s ease;
 }
-.theme-mecha button:hover { filter: brightness(1.08); }
+/*.theme-mecha button:hover { filter: brightness(1.08); }*/
+.theme-mecha button:hover{
+  border-color: var(--accent-2);
+  background: linear-gradient(180deg, #facc15, #eab308); /* 鮮やかな黄色 */
+  color: #000; /* 文字を黒にしてコントラスト */
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.7); /* ネオン発光風 */
+  transform: scale(1.05); /* 少し大きく */
+}
 .theme-mecha button:active { transform: translateY(1px); box-shadow: 0 0 .2rem rgba(56,189,248,.5) inset; }
 
 /* ステータス系（残コマンド・ヒント） */
@@ -170,7 +184,7 @@ titlebar .mission{ opacity:.9; }
   padding:10px 12px;
   border:2px solid #475569;
   border-radius:10px;
-  background:#ccd3e5;
+  background:#56617f;
   color:var(--text);
   cursor:pointer;
   line-height:1;
