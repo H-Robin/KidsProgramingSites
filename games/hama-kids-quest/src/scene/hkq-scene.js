@@ -78,6 +78,8 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('arrow-ne', 'assets/direction/arrow-ne.png');
     this.load.image('arrow-se', 'assets/direction/arrow-se.png');
     this.load.image('arrow-sw', 'assets/direction/arrow-sw.png');
+
+    this.load.image('bg_moon', 'assets/wallpaper/moon.png');
   }
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
@@ -237,7 +239,7 @@ export class HkqScene extends Phaser.Scene {
 
     this.createAnimations();
     this.buildLevel(true);
-
+    this.updateBackground(); // ここで背景を反映
     // Resize handling
     this._lastSize = { w: this.scale.width, h: this.scale.height };
     this._resizeTid = null;
@@ -248,8 +250,10 @@ export class HkqScene extends Phaser.Scene {
       this._resizeTid = setTimeout(() => {
         this._lastSize = { w, h };
         this.buildLevel(false);
+        this.updateBackground(); 
       }, 120);
     });
+
   }
 
   // 方向アイコンを一時表示
@@ -312,6 +316,8 @@ export class HkqScene extends Phaser.Scene {
     const alignX = 0.7;
     const x0 = this.snap(pad + (availW - f.width) * alignX);
     const y0 = this.snap(pad + (availH - f.height) / 2);
+
+    this._fieldBounds = { x: x0, y: y0, w: f.width, h: f.height };
 
     this.cameras.main.setBackgroundColor('#0b1020');
     this.fieldLayer?.destroy(true);
@@ -456,6 +462,7 @@ export class HkqScene extends Phaser.Scene {
     // インベントリ最後に初期化
     this.inventory = { weapon: false, key: false };
     this.renderItemBox();
+    this.updateBackground();
   }
 
   emitMissionStart() {
@@ -648,5 +655,31 @@ export class HkqScene extends Phaser.Scene {
       slots[1].classList.add('on');
       slots[1].innerHTML = `<img src="assets/items/gatecard.png" alt="key" style="width:90%;height:auto;">`;
     }
+  }
+
+  updateBackground() {
+    const b = this._fieldBounds;
+    if (!b) return;
+
+    const cam = this.cameras.main;
+    cam.setBounds(0, 0, this.scale.gameSize.width, this.scale.gameSize.height);
+
+    // ① 拡大係数（例: 1.25 = 25%大きく）
+    const scaleK = 2.50;
+    const w = Math.floor(b.w * scaleK);
+    const h = Math.floor(b.h * scaleK);
+
+    // ② フィールド中心に合わせて配置（はみ出し分の半分だけ左上にずらす）
+    const x = Math.floor(b.x - (w - b.w) / 2);
+    const y = Math.floor(b.y - (h - b.h) / 2);
+
+    if (!this.bg) {
+      this.bg = this.add.image(x, y, 'bg_moon')
+        .setOrigin(0, 0)
+        .setDepth(-100)
+        .setScrollFactor(0); // 画面固定（必要に応じて 1 に）
+    }
+
+    this.bg.setPosition(x, y).setDisplaySize(w, h);
   }
 }

@@ -17,7 +17,7 @@
   <!-- ゲーム側コード -->
   <script type="module" src="./src/main/hkq-main.js"></script>
 </head>
-<body class="ui-locked boot">
+<body class="ui-locked boot theme-mecha">
   <!-- ★ タイトルバー（ページ上部・全幅） -->
   <header class="titlebar">
     <div id="game-title" class="title">Hama Kids Quest</div>
@@ -49,17 +49,17 @@
         <div id="palette"></div>
       </div>
 
-      <div class="pane">
+      <div class="pane" id="pane-main">
         <h3>MAIN</h3>
         <ol id="program"></ol>
         <div class="controls">
           <button id="run">▶ 実行</button>
           <button id="step">⏭ ステップ</button>
           <button id="stop">■ 停止</button>
-      <!--    <button id="reset">↻ リスタート</button>  削除-->
           <button id="exit">⏹ 終了</button>
         </div>
       </div>
+      
       <div class="pane">
         <h3>アイテムBOX</h3>
           <div id="item-box">
