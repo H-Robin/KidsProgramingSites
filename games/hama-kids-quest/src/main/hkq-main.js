@@ -3,10 +3,19 @@ import { Interpreter } from "../common/engine/interpreter.js";
 import { HkqScene } from '../scene/hkq-scene.js';
 
 import { Mission } from '../scene/hkq-mission.js';
+import { initCommandLimitUI } from '../common/ui/command-limit.js';
 
 let mission = null;
 // あとは Scene がイベントを投げるたびに、Mission が自動でUI更新＆判定
 
+// main.js など
+ initCommandLimitUI({
+   programListSel: '#program',          // ★ 実DOMに合わせる
+   paletteBtnSel:  '.palette .btn',
+   capBarSel:      '#cmd-limit-bar',
+   leftSel:        '#cmd-left',
+   hintSel:        '#cmd-hint',
+ });
 // ===== Phaser 設定 =====
 const config = {
   type: Phaser.AUTO,
@@ -94,18 +103,15 @@ paletteRoot?.querySelectorAll('.cmd, [data-op]').forEach(el=>{
 });
 
 // ===== Main へ追加 =====
-function addProgramCmd(label, op){ return addProgramCmdInto(programList, label, op); }
-function addProgramCmdInto(container, label, op){
-  if (!op) return;
-  const li = document.createElement('li');
-  li.className = 'cmd';
-  li.dataset.op = op; li.dataset.label = label;
-  li.textContent = label;
-  li.setAttribute('title', label);
-  container.appendChild(li);
-  return li;
-}
-
+ function buildCmdNode(label, op){
+   if (!op) return null;
+   const li = document.createElement('li');
+   li.className = 'cmd';
+   li.dataset.op = op; li.dataset.label = label;
+   li.textContent = label;
+   li.setAttribute('title', label);
+   return li;
+ }
 // ===== くり返しブロック（入れ子禁止） =====
 let recordingRepeat = null;
 function createRepeatBlock(defaultCount=2){
@@ -135,8 +141,11 @@ function createRepeatBlock(defaultCount=2){
   head.appendChild(label); head.appendChild(count); head.appendChild(endBtn);
 
   const body = document.createElement('ul'); body.className = 'repeat-body';
-  block.appendChild(head); block.appendChild(body); programList.appendChild(block);
-
+  block.appendChild(head); block.appendChild(body);
+  // ★ ここでトップレベルに置くのを command-limit 経由に
+  if (!window.HKQ_CMD_LIMIT?.addTopLevelBlock(block)) {
+    return null; // 上限で置けない場合は終了
+  }
   recordingRepeat = { blockEl:block, bodyEl:body, countInput:count };
   programList.classList.add('recording-repeat');
 
@@ -177,8 +186,15 @@ function onPalettePress(ev){
     if (recordingRepeat) return;
     createRepeatBlock(2);
   } else {
-    if (recordingRepeat) addProgramCmdInto(recordingRepeat.bodyEl, label, op);
-    else addProgramCmd(label, op);
+    const node = buildCmdNode(label, op);
+    if (!node) return;
+    if (recordingRepeat) {
+      // ★ repeat 内は残数に影響させない
+      window.HKQ_CMD_LIMIT?.addInsideRepeat(recordingRepeat.bodyEl, node);
+    } else {
+      // ★ トップレベルは必ず −1 される経路
+      window.HKQ_CMD_LIMIT?.addTopLevelBlock(node);
+    }
   }
   btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),120);
 }
@@ -195,6 +211,7 @@ function onProgramTap(ev){
     programList.classList.remove('recording-repeat');
   }
   li.remove();
+  window.HKQ_CMD_LIMIT?.refreshCapUI();
 }
 programList.addEventListener('pointerup', dispatchOnce(onProgramTap), { passive:false });
 programList.addEventListener('click',     dispatchOnce(onProgramTap), { passive:false });

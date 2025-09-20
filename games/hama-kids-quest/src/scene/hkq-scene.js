@@ -287,6 +287,14 @@ export class HkqScene extends Phaser.Scene {
     const startY = L.robot?.y ?? this.gridH - 1;
     this.startCell = { x: startX, y: startY };
 
+    this.cmdCap = Number.isFinite(L.cmdCap) ? L.cmdCap : 10;
+    this.repeatInnerCap = Number.isFinite(L.repeatInnerCap) ? L.repeatInnerCap : 3;
+
+    // UIへ通知（レベル切り替え時に飛ぶ）
+    document.dispatchEvent(new CustomEvent('hkq:limits', {
+      detail: { cmdCap: this.cmdCap, repeatInnerCap: this.repeatInnerCap }
+    }));
+
     const W = this.scale.gameSize.width;
     const H = this.scale.gameSize.height;
     const pad = 16;

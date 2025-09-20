@@ -15,7 +15,9 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 5,
+    "repeatInnerCap": 3 
   },
   {
     "id": "T1-Line-Down",
@@ -57,7 +59,9 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 6,
+    "repeatInnerCap": 3 
   },  
   {
     "id": "T1-Line-Right",
@@ -74,7 +78,9 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 5,
+    "repeatInnerCap": 3 
   },
   {
     "id": "M1-Line",
@@ -105,7 +111,9 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
   },
   {
     "id": "M2-ZigZag",
@@ -136,7 +144,9 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
   },
   {
     "id": "M3-Perimeter",
@@ -167,7 +177,9 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
   },
   {
     "id": "M4-Diagonal",
@@ -198,7 +210,9 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
   },
   {
     "id": "M5-Random",
@@ -229,6 +243,9 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" }
+    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
+
   }
 ]

@@ -29,6 +29,13 @@
       <h3>Mission</h3>
       <div id="mission-clear-text">ロボットを月面基地へ向かうこと</div>
     </section>
+    <!-- 残りコマンド数・ヒント表示 -->
+    <ol id="program-list"></ol>
+
+    <div id="cmd-limit-bar" class="cmd-limit">
+      【のこりコマンド数：<span id="cmd-left">10</span>】
+      <div id="cmd-hint" class="cmd-hint" aria-live="polite">【ヒント：】</div>
+    </div>
   <div id="app">
     <!-- 左：フィールド（キャンバスが全域にフィット） -->
     <div id="stage-left">

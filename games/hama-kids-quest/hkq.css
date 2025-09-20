@@ -201,3 +201,7 @@ body.ui-locked #exit{
 }
 .cc-item{display:flex;gap:6px;align-items:center;padding:2px 0}
 .cc-item.ok .cc-text{opacity:.7;text-decoration:line-through}
+/* コマンド数上限 */
+.cmd-limit{ font-weight:600; margin:.5rem 0; }
+.cmd-limit.full{ color:#c00; }
+.cmd-hint{ font-weight:600; margin-top:.25rem; min-height:1.2em; }
