@@ -1,22 +1,63 @@
+// hkq-main.js — formal version
 import { createPalette } from "../common/ui/palette.js";
 import { Interpreter } from "../common/engine/interpreter.js";
-import { HkqScene } from '../scene/hkq-scene.js';
+import { HkqScene } from "../scene/hkq-scene.js";
+import { Mission } from "../scene/hkq-mission.js";
+import { initCommandLimitUI } from "../common/ui/command-limit.js";
 
-import { Mission } from '../scene/hkq-mission.js';
-import { initCommandLimitUI } from '../common/ui/command-limit.js';
+/**
+ * Runner 世代番号（古い Runner の遅延 tick を無視するための世代ガード）
+ * - newRunner() を呼ぶ度に ++ される。
+ * - onTick 側は自分の世代と一致しない場合は無視する。
+ */
+window.HKQ_RUNNER_GEN = 0;
 
-let mission = null;
-// あとは Scene がイベントを投げるたびに、Mission が自動でUI更新＆判定
+/**
+ * newRunner(programList) : Interpreter を「新しい世代」で生成
+ * @param {HTMLElement} listEl - 実行プログラムの UL 要素
+ * @returns {Interpreter}
+ * 処理概要:
+ *  - 生成時に世代番号を確定
+ *  - onTick: 自分の世代でない tick や、カットシーン/ロック中は破棄
+ *  - onReset: 共通の clearRunnerQueue → scene.resetLevel を呼ぶ
+ */
+function newRunner(listEl) {
+  const myGen = ++window.HKQ_RUNNER_GEN; // 新しい世代番号
+  return new Interpreter({
+    programList: listEl,
+    onTick: (op) => {
+      // 古い Runner の tick を黙殺
+      if (myGen !== window.HKQ_RUNNER_GEN) return;
 
-// main.js など
- initCommandLimitUI({
-   programListSel: '#program',          // ★ 実DOMに合わせる
-   paletteBtnSel:  '.palette .btn',
-   capBarSel:      '#cmd-limit-bar',
-   leftSel:        '#cmd-left',
-   hintSel:        '#cmd-hint',
- });
-// ===== Phaser 設定 =====
+      const sc = scene();
+      // カットシーン中／入力ロック中は実行しない
+      if (sc?._cutscenePlaying || sc?._inputLocked) return;
+
+      const symMap = { up: "↑", down: "↓", right: "→", left: "←", repeat: "くり返し" };
+      const sym = symMap[op] || op;
+      sc?.onTick?.(sym);
+    },
+    onReset: () => {
+      window.clearRunnerQueue?.();       // 停止・UI初期化・新 Runner 再生成
+      scene()?.resetLevel?.();           // シーン側のリセット
+    },
+    tickDelay: 300,
+  });
+}
+
+/* =========================
+   Command Limit UI 初期化
+   - 戻り値をグローバルに保持
+   ========================= */
+window.HKQ_CMD_LIMIT = initCommandLimitUI({
+  programListSel: "#program",
+  paletteBtnSel: ".palette .btn",
+  capBarSel: "#cmd-limit-bar",
+  leftSel: "#cmd-left",
+  hintSel: "#cmd-hint",
+});
+
+/* ============ Phaser 設定 ============ */
 const config = {
   type: Phaser.AUTO,
   parent: "game-container",
@@ -27,329 +68,334 @@ const config = {
   pixelArt: true,
   scene: [HkqScene],
 };
-const game  = new Phaser.Game(config);
+const game = new Phaser.Game(config);
 const scene = () => game.scene.keys["HkqScene"];
 
-// ===== DOM 参照 =====
+/* ============ DOM 参照 ============ */
 const paletteRoot = document.getElementById("palette");
 const programList = document.getElementById("program");
-const runBtn   = document.getElementById("run");
-const stepBtn  = document.getElementById("step");
-const stopBtn  = document.getElementById("stop");
-const exitBtn  = document.getElementById("exit");
-// ▼ 追加：Main全体の繰り返し回数
+const runBtn = document.getElementById("run");
+const stepBtn = document.getElementById("step");
+const stopBtn = document.getElementById("stop");
+const exitBtn = document.getElementById("exit");
 const repeatSelect = document.getElementById("repeat-count");
 
-// ===== パレット（表示=矢印 / 内部op=英語） =====
+/* ============ Runner（公開参照） ============ */
+let mission = null;
+let interp = newRunner(programList);
+window.currentRunner = interp;
+
+/**
+ * window.clearRunnerQueue()
+ * 処理概要:
+ *  - 現 Runner の stop() / タイマー解除
+ *  - Runner 内部状態の初期化（isRunning / currentCommand / commandQueue）
+ *  - UI 初期化（programList を空に / 残数バー更新）
+ *  - newRunner() で新 Runner を生成（＝世代番号が進むので旧 tick は黙殺）
+ */
+window.clearRunnerQueue = function () {
+  const r = window.currentRunner;
+  try { r?.stop?.(); } catch (_) {}
+  try { clearTimeout(r?._timer); } catch (_) {}
+
+  if (r) {
+    r.isRunning = false;
+    r.currentCommand = null;
+    r.commandQueue = [];
+  }
+  try {
+    programList.innerHTML = "";
+    window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+  } catch (_) {}
+
+  // ★ くり返し録画状態を必ず解除（DOMクラスも外す）
+  try {
+    recordingRepeat = null;
+    programList.classList.remove("recording-repeat");
+  } catch (_) {}
+  // 新世代の Runner に置き換え（古い tick は世代不一致で無効化）
+  window.currentRunner = newRunner(programList);
+};
+
+/* ===============================
+   パレット作成 & アイコン化
+   - 表示: 矢印
+   - 内部: 英語 op
+   =============================== */
 const CMDS = [
   { label: "↑", op: "up" },
   { label: "↓", op: "down" },
   { label: "→", op: "right" },
   { label: "←", op: "left" },
-  { label: "くり返し", op: "repeat" }
+  { label: "くり返し", op: "repeat" },
 ];
 createPalette(paletteRoot, programList, CMDS);
 
-// --- 画像アイコンに差し替え（角度はアイソメ向き合わせ） ---
-(function replacePaletteTextWithIcons(){
+/**
+ * replacePaletteTextWithIcons()
+ * 処理概要:
+ *  - パレットのテキストボタンを画像アイコンに差し替え
+ *  - 角度はアイソメ表示に合わせた方位の画像にマップ
+ */
+(function replacePaletteTextWithIcons() {
   const map = {
-    up:    'assets/direction/arrow-ne.png', // ↗︎
-    down: 'assets/direction/arrow-nw.png', // ↘︎
-    right:  'assets/direction/arrow-se.png', // ↙︎
-    left:  'assets/direction/arrow-sw.png', // ↖︎
+    up: "assets/direction/arrow-ne.png",    // ↗︎
+    down: "assets/direction/arrow-nw.png",  // ↘︎
+    right: "assets/direction/arrow-se.png", // ↙︎
+    left: "assets/direction/arrow-sw.png",  // ↖︎
   };
   const aliases = {
-    up:    ['up','↑','まえ','上'],
-    right: ['right','→','みぎ','右'],
-    down:  ['down','↓','うしろ','下'],
-    left:  ['left','←','ひだり','左'],
+    up: ["up", "↑", "まえ", "上"],
+    right: ["right", "→", "みぎ", "右"],
+    down: ["down", "↓", "うしろ", "下"],
+    left: ["left", "←", "ひだり", "左"],
   };
   const guessKey = (txt) => {
     const s = txt.trim();
     for (const k of Object.keys(aliases)) if (aliases[k].includes(s)) return k;
     return null;
   };
-  paletteRoot.querySelectorAll('.cmd').forEach(btn=>{
-    if (btn.classList.contains('icon')) return;
+  paletteRoot.querySelectorAll(".cmd").forEach((btn) => {
+    if (btn.classList.contains("icon")) return;
     const label = (btn.dataset.label || btn.textContent || "").trim();
     const key = guessKey(label);
     if (!key) return;
-    const src = map[key];
-    btn.classList.add('icon');
-    btn.setAttribute('aria-label', label);
-    btn.innerHTML = `<img src="${src}" alt="${label}"><span class="sr-only">${label}</span>`;
+    btn.classList.add("icon");
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = `<img src="${map[key]}" alt="${label}"><span class="sr-only">${label}</span>`;
   });
 })();
 
-// ---- DnD無効化／属性補完 ----
-function disableDragAndDrop(root){
+/**
+ * disableDragAndDrop(root)
+ * @param {HTMLElement} root
+ * 処理概要:
+ *  - ドラッグ & ドロップを全面抑止（モバイルの誤操作対策）
+ *  - 既存の .cmd / [data-op] 要素の draggable を無効化
+ */
+function disableDragAndDrop(root) {
   if (!root) return;
-  root.querySelectorAll('.cmd,[data-op]').forEach(el=>{
+  root.querySelectorAll(".cmd,[data-op]").forEach((el) => {
     el.draggable = false;
-    el.ondragstart = e=>{ e.preventDefault(); return false; };
+    el.ondragstart = (e) => { e.preventDefault(); return false; };
   });
-  ["dragstart","dragover","drop","dragend"].forEach(type=>{
-    root.addEventListener(type, e=>{ e.preventDefault(); e.stopPropagation(); }, { passive:false });
+  ["dragstart", "dragover", "drop", "dragend"].forEach((type) => {
+    root.addEventListener(type, (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
   });
 }
 disableDragAndDrop(paletteRoot);
 disableDragAndDrop(programList);
 
-const jp2en = { "↑":"up","↓":"down","→":"right","←":"left","くり返し":"repeat" };
-paletteRoot?.querySelectorAll('.cmd, [data-op]').forEach(el=>{
+/* ラベル→op の補完（日本語矢印→英語 op） */
+const jp2en = { "↑": "up", "↓": "down", "→": "right", "←": "left", "くり返し": "repeat" };
+paletteRoot?.querySelectorAll(".cmd, [data-op]").forEach((el) => {
   const label = (el.dataset.label || el.textContent || "").trim();
   if (!el.dataset.op && jp2en[label]) el.dataset.op = jp2en[label];
   if (!el.dataset.label) el.dataset.label = label;
 });
 
-// ===== Main へ追加 =====
- function buildCmdNode(label, op){
-   if (!op) return null;
-   const li = document.createElement('li');
-   li.className = 'cmd';
-   li.dataset.op = op; li.dataset.label = label;
-   li.textContent = label;
-   li.setAttribute('title', label);
-   return li;
- }
-// ===== くり返しブロック（入れ子禁止） =====
+/**
+ * buildCmdNode(label, op)
+ * @returns {HTMLLIElement|null}
+ * 処理概要:
+ *  - Program リストへ挿入する単一コマンド要素を生成
+ */
+function buildCmdNode(label, op) {
+  if (!op) return null;
+  const li = document.createElement("li");
+  li.className = "cmd";
+  li.dataset.op = op; li.dataset.label = label;
+  li.textContent = label;
+  li.setAttribute("title", label);
+  return li;
+}
+
+/* ===== くり返しブロック（入れ子禁止） ===== */
 let recordingRepeat = null;
-function createRepeatBlock(defaultCount=2){
-  const block = document.createElement('li');
-  block.className = 'block repeat';
-  block.dataset.op = 'repeat';
 
-  const head  = document.createElement('div'); head.className = 'repeat-head';
-  const label = document.createElement('span'); label.textContent = 'くり返し';
+/**
+ * createRepeatBlock(defaultCount)
+ * @returns {HTMLLIElement|null}
+ * 処理概要:
+ *  - トップレベルに「くり返し」ブロックを追加
+ *  - iOS キーボード対策として select(2〜10) を採用
+ *  - command-limit による上限チェックに失敗したら中止
+ */
+function createRepeatBlock(defaultCount = 2) {
+  const block = document.createElement("li");
+  block.className = "block repeat";
+  block.dataset.op = "repeat";
 
-  // ★ iPhoneでキーボードを出さない：数値入力→セレクト（2〜10固定）
-  const count = document.createElement('select');
-  count.className = 'repeat-count';
+  const head = document.createElement("div"); head.className = "repeat-head";
+  const label = document.createElement("span"); label.textContent = "くり返し";
+
+  const count = document.createElement("select");
+  count.className = "repeat-count";
   for (let n = 2; n <= 10; n++) {
-    const opt = document.createElement('option');
+    const opt = document.createElement("option");
     opt.value = String(n);
     opt.textContent = String(n);
     count.appendChild(opt);
   }
-  // 既定値の範囲クリップ（2〜10）
-  const init = Math.min(10, Math.max(2, defaultCount|0 || 2));
+  const init = Math.min(10, Math.max(2, defaultCount | 0 || 2));
   count.value = String(init);
 
-  const endBtn = document.createElement('button');
-  endBtn.type = 'button'; endBtn.className = 'repeat-close'; endBtn.textContent = 'End';
+  const endBtn = document.createElement("button");
+  endBtn.type = "button"; endBtn.className = "repeat-close"; endBtn.textContent = "End";
 
   head.appendChild(label); head.appendChild(count); head.appendChild(endBtn);
 
-  const body = document.createElement('ul'); body.className = 'repeat-body';
+  const body = document.createElement("ul"); body.className = "repeat-body";
   block.appendChild(head); block.appendChild(body);
-  // ★ ここでトップレベルに置くのを command-limit 経由に
-  if (!window.HKQ_CMD_LIMIT?.addTopLevelBlock(block)) {
-    return null; // 上限で置けない場合は終了
-  }
-  recordingRepeat = { blockEl:block, bodyEl:body, countInput:count };
-  programList.classList.add('recording-repeat');
 
-  endBtn.addEventListener('click', (e)=>{ e.stopPropagation(); });
-  endBtn.addEventListener('pointerup', (e)=>{ e.stopPropagation(); });
-  endBtn.addEventListener('click', ()=>{
-    if (!body.querySelector('.cmd')) block.remove();
+  // ★ ここでトップレベルに置くのを command-limit 経由にし、
+  //    失敗（未定義/false）ならフåォールバックで直接挿入
+  const ok = window.HKQ_CMD_LIMIT?.addTopLevelBlock?.(block);
+  if (ok === false || ok === undefined) {
+    programList.appendChild(block);           // フォールバック挿入
+    window.HKQ_CMD_LIMIT?.refreshCapUI?.();   // 残数UIを更新
+  }
+  recordingRepeat = { blockEl: block, bodyEl: body, countInput: count };
+  programList.classList.add("recording-repeat");
+
+  endBtn.addEventListener("click", (e) => { e.stopPropagation(); });
+  endBtn.addEventListener("click", () => {
+    if (!body.querySelector(".cmd")) block.remove();
     recordingRepeat = null;
-    programList.classList.remove('recording-repeat');
+    programList.classList.remove("recording-repeat");
   });
   return block;
 }
 
-function isLocked(){ return document.body.classList.contains('ui-locked'); }
-let _lastEvt = { t:0, x:0, y:0 };
-function dispatchOnce(handler){
-  return function(ev){
+/**
+ * dispatchOnce(handler)
+ * @returns {Function} - 多重クリック防止ラッパ
+ * 処理概要:
+ *  - 150ms / 4px 以内の重複イベントを無効化
+ */
+function dispatchOnce(handler) {
+  let _lastEvt = { t: 0, x: 0, y: 0 };
+  return function (ev) {
     const now = performance.now();
     const isDup = (now - _lastEvt.t) < 150 &&
-      Math.abs((ev.clientX||0) - _lastEvt.x) < 4 &&
-      Math.abs((ev.clientY||0) - _lastEvt.y) < 4;
+      Math.abs((ev.clientX || 0) - _lastEvt.x) < 4 &&
+      Math.abs((ev.clientY || 0) - _lastEvt.y) < 4;
     if (isDup) return;
-    _lastEvt = { t: now, x: ev.clientX||0, y: ev.clientY||0 };
+    _lastEvt = { t: now, x: ev.clientX || 0, y: ev.clientY || 0 };
     ev.preventDefault?.(); ev.stopPropagation?.();
     handler(ev);
   };
 }
 
-function onPalettePress(ev){
-  if (isLocked()) return;
-  const btn = ev.target.closest('[data-op], .cmd');
+
+/**
+ * onProgramTap(ev)
+ * 処理概要:
+ *  - Program 内の単一コマンド（.cmd）を削除
+ *  - くり返しブロックは End ボタンで閉じる（ここでは削除しない）
+ */
+function onProgramTap(ev) {
+  if (document.body.classList.contains("ui-locked")) return;
+
+  const li = ev.target.closest(".cmd, .block.repeat");
+  if (!li || !programList.contains(li)) return;
+
+  if (li.classList.contains("cmd")) {
+    li.remove();
+    window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+  }
+}
+
+/* ============ クリックに統一（多重発火防止） ============ */
+paletteRoot.addEventListener("click", dispatchOnce(onPalettePress), { passive: false });
+programList.addEventListener("click", dispatchOnce(onProgramTap), { passive: false });
+
+/**
+ * 実行系ボタン: run / step / stop / exit
+ * 処理概要:
+ *  - run: select の回数を読み、Runner.run を実行
+ *  - step: 1 ステップだけ進める
+ *  - stop: clearRunnerQueue（停止→UI初期化→新 Runner）
+ *  - exit: 停止→UI空→残数更新→ミッション 1 へ
+ */
+runBtn?.addEventListener("click", () => {
+  if (document.body.classList.contains("ui-locked")) return;
+  const times = (repeatSelect?.value ? parseInt(repeatSelect.value, 10) : 1) || 1;
+  window.currentRunner?.run?.(programList, { times });
+});
+stepBtn?.addEventListener("click", () => {
+  if (document.body.classList.contains("ui-locked")) return;
+  window.currentRunner?.step?.(programList);
+});
+stopBtn?.addEventListener("click", () => {
+  window.clearRunnerQueue?.();
+});
+exitBtn?.addEventListener("click", () => {
+  try { window.currentRunner?.stop?.(); } catch (_) {}
+  programList.innerHTML = "";
+  window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+  try { scene()?.gotoMission?.(0); } catch (_) {}
+});
+
+/**
+ * onPalettePress(ev)
+ * 役割:
+ *  - パレットのボタンを Program に追加するメインハンドラ
+ *  - 「くり返し」はブロックを作成（入れ子禁止）
+ *  - 方向コマンドは録画中ならブロック内へ、そうでなければトップレベルへ
+ *  - command-limit API（HKQ_CMD_LIMIT）が未定義でも“押しても何も起きない”を避けるため
+ *    フォールバックで確実に挿入する
+ * 挙動:
+ *  - くり返し録画中は addInsideRepeat?.() の戻り値を見て、
+ *    undefined（APIなし）のときだけ直挿し、false（上限超過）は挿入しない
+ *  - トップレベルも addTopLevelCmd?.() が false/undefined のとき直挿しする
+ */
+function onPalettePress(ev) {
+  if (document.body.classList.contains("ui-locked")) return;
+
+  const btn = ev.target.closest("[data-op], .cmd");
   if (!btn || !paletteRoot.contains(btn)) return;
-  const op    = btn.dataset.op || jp2en[(btn.textContent||"").trim()];
-  const label = btn.dataset.label || (btn.textContent||"").trim();
+
+  const op    = btn.dataset.op || jp2en[(btn.textContent || "").trim()];
+  const label = btn.dataset.label || (btn.textContent || "").trim();
   if (!op) return;
 
-  if (op === "repeat"){
+  if (op === "repeat") {
+    if (recordingRepeat && !programList.querySelector(".block.repeat .repeat-body")) {
+      recordingRepeat = null;
+      programList.classList.remove("recording-repeat");
+    }
     if (recordingRepeat) return;
     createRepeatBlock(2);
-  } else {
-    const node = buildCmdNode(label, op);
-    if (!node) return;
-    if (recordingRepeat) {
-      // ★ repeat 内は残数に影響させない
-      window.HKQ_CMD_LIMIT?.addInsideRepeat(recordingRepeat.bodyEl, node);
-    } else {
-      // ★ トップレベルは必ず −1 される経路
-      window.HKQ_CMD_LIMIT?.addTopLevelBlock(node);
+    return;
+  }
+
+  const node = buildCmdNode(label, op);
+  if (!node) return;
+
+  if (recordingRepeat) {
+    const ok = window.HKQ_CMD_LIMIT?.addInsideRepeat?.(recordingRepeat.bodyEl, node);
+    if (ok === false) return; // 上限超過
+    if (ok === undefined) {
+      (recordingRepeat.bodyEl ?? document.querySelector(".block.repeat .repeat-body"))
+        ?.appendChild(node);
     }
+    window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+    return;
   }
-  btn.classList.add('pressed'); setTimeout(()=>btn.classList.remove('pressed'),120);
-}
-paletteRoot.addEventListener('pointerup', dispatchOnce(onPalettePress), { passive:false });
-paletteRoot.addEventListener('click',     dispatchOnce(onPalettePress), { passive:false });
-paletteRoot.addEventListener('pointerup', dispatchOnce(onPalettePress), { passive:false });
 
-function onProgramTap(ev){
-  if (ev.target.closest('.repeat-close') || ev.target.closest('.repeat-head')) return;
-  const li = ev.target.closest('.cmd, .block.repeat');
-  if (!li || !programList.contains(li)) return;
-  if (recordingRepeat && recordingRepeat.blockEl === li){
-    recordingRepeat = null;
-    programList.classList.remove('recording-repeat');
+  const okTop = window.HKQ_CMD_LIMIT?.addTopLevelCmd?.(node);
+  if (okTop === false || okTop === undefined) {
+    if (okTop === undefined) {
+      programList.appendChild(node);
+    }
+    window.HKQ_CMD_LIMIT?.refreshCapUI?.();
   }
-  li.remove();
-  window.HKQ_CMD_LIMIT?.refreshCapUI();
 }
-programList.addEventListener('pointerup', dispatchOnce(onProgramTap), { passive:false });
-programList.addEventListener('click',     dispatchOnce(onProgramTap), { passive:false });
-programList.addEventListener('pointerup', dispatchOnce(onProgramTap), { passive:false });
-
-// ===== Interpreter 準備 =====
-const en2sym = { up:"↑", down:"↓", right:"→", left:"←", repeat:"くり返し" };
-const sym2sym = { "↑":"↑","↓":"↓","→":"→","←":"←","くり返し":"くり返し" };
-function makeInterpreter(listEl){
-  return new Interpreter({
-    programList: listEl,
-    onTick:  (op) => {
-      const sym = en2sym[op] || sym2sym[op] || op;
-      scene()?.onTick?.(sym);
-    },
-    onReset: () => scene()?.resetLevel?.(),
-    tickDelay: 300,
-  });
-}
-let interp = makeInterpreter(programList);
-let currentRunner = interp;
-
-// ===== 実行・停止・終了 =====
-let _resetting = false, _cool = null;
-function cooldown(btn, ms=300){
-  if (_cool) clearTimeout(_cool);
-  _resetting = true; btn && (btn.disabled = true);
-  _cool = setTimeout(()=>{ _resetting=false; btn && (btn.disabled=false); }, ms);
-}
-
- // 実行用スナップショット：元DOMの「現在値」をクローンへ反映してから innerHTML を取得
- function serializeProgramHTML(container){
-   const clone = container.cloneNode(true); // 深いコピー
- 
-   // --- select の現在値を【元DOM】から読み取り、クローンへ selected を付与 ---
-   const origSelects  = container.querySelectorAll('select');
-   const cloneSelects = clone.querySelectorAll('select');
-   cloneSelects.forEach((sel, i) => {
-     const cur = origSelects[i] ? origSelects[i].value : sel.value; // ← 元DOM優先
-     Array.from(sel.options).forEach(opt => {
-       if (opt.value === cur) opt.setAttribute('selected', 'selected');
-       else opt.removeAttribute('selected');
-     });
-   });
- 
-   // --- input の現在値/状態を【元DOM】からクローンへ反映 ---
-   const origInputs  = container.querySelectorAll('input');
-   const cloneInputs = clone.querySelectorAll('input');
-   cloneInputs.forEach((inp, i) => {
-     const src = origInputs[i] || inp;
-     if (inp.type === 'checkbox' || inp.type === 'radio') {
-       if (src.checked) inp.setAttribute('checked', 'checked');
-       else inp.removeAttribute('checked');
-     } else {
-       inp.setAttribute('value', src.value ?? '');
-     }
-   });
- 
-   return clone.innerHTML;
- }
-runBtn && (runBtn.onclick = () => {
-  if (_resetting) return;
-
-   // ★ 開きっぱなしのくり返しブロックがあれば強制クローズ
-   if (recordingRepeat) {
-     const { blockEl, bodyEl } = recordingRepeat;
-     if (!bodyEl.querySelector('.cmd')) {
-       // 中身が空ならブロックごと削除
-       blockEl.remove();
-     }
-     recordingRepeat = null;
-     programList.classList.remove('recording-repeat');
-   }
-
-  // 1) Mainのスナップショットを取得
-  const snapshotHTML = serializeProgramHTML(programList);
-  // 空なら何もしない
-  if (!snapshotHTML.trim()) return;
-
-  // 2) Main全体の繰り返しは廃止 → 無条件で1回だけコピー
-  const buffer = document.getElementById('program-run-buffer') || (()=> {
-    const el = document.createElement('ol');
-    el.id = 'program-run-buffer';
-    el.style.display = 'none';
-    document.body.appendChild(el);
-    return el;
-  })();
-  buffer.innerHTML = snapshotHTML;  // 1回分のみ
-
-  // 4) バッファを読む専用 Interpreter を作って走らせる
-  const local = makeInterpreter(buffer);
-  currentRunner = local;
-  local.run();
-
-  // 5) UIのMainは即クリア（仕様）
-  programList.innerHTML = "";
-});
-
-stepBtn && (stepBtn.onclick = ()=>{ if (_resetting) return; currentRunner.step?.(); });
-stopBtn && (stopBtn.onclick = ()=>{ try{ currentRunner.stop?.(); }catch(_){}});
-
-exitBtn && (exitBtn.onclick = ()=>{
-  try{ currentRunner.stop?.(); }catch(_){}
-  programList.innerHTML = "";
-  try{ scene()?.gotoMission?.(0); }catch(_){}
-});
-
-// ===== タイトルバー更新／クリア時の後処理 =====
-document.addEventListener("hkq:mission-start", (e)=>{
-     // ← ここで Scene から渡された level を受け取り、Mission を初期化
-   const level = e.detail?.level;
-   if (level) {
-     if (!mission) mission = new Mission(level);
-     else mission.reset(level);         // ← ここがポイント
-     // クリア条件パネルの初期表示（任意）
-     mission.render?.();
-   }
-  const titleEl   = document.getElementById("game-title");
-  const missionEl = document.getElementById("mission-label");
-  const elapsedEl = document.getElementById("elapsed");
-  missionEl && (missionEl.textContent = `ミッション ${e.detail.mission+1}`);
-  titleEl   && (titleEl.textContent   = "Hama Kids Quest");
-
-  if (elapsedEl){
-    const t0 = Date.now();
-    clearInterval(elapsedEl._tid);
-    elapsedEl._tid = setInterval(()=>{
-      const s  = Math.floor((Date.now()-t0)/1000);
-      const mm = String(Math.floor(s/60)).padStart(2,"0");
-      const ss = String(s%60).padStart(2,"0");
-      elapsedEl.textContent = `${mm}:${ss}`;
-    }, 250);
-  }
-});
-
-// ミッションクリア時：Mainを自動クリア＆実行インタプリタ停止
-document.addEventListener("hkq:mission-cleared", ()=>{
-  try { programList.innerHTML = ""; } catch(_){}
-  try { currentRunner.stop?.(); } catch(_){}
-  [runBtn, stepBtn].forEach(b=>{ if(b){ b.disabled = true; setTimeout(()=>b.disabled=false, 800);} });
-});
+/**
+ * シーンからのロック/アンロック通知
+ * 処理概要:
+ *  - カットシーン開始/終了などで UI を無効/有効化
+ */
+document.addEventListener("hkq:lock", () => document.body.classList.add("ui-locked"));
+document.addEventListener("hkq:unlock", () => document.body.classList.remove("ui-locked"));

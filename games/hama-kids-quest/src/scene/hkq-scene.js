@@ -11,27 +11,70 @@ const ISO_ARROW = {
 };
 
 export class HkqScene extends Phaser.Scene {
+  /**
+   * HkqScene
+   * 処理概要:
+   *  - シーン共通フラグ（カットシーン再生中/入力ロック中）を初期化
+   *  - シーンキーを 'HkqScene' に固定
+   */
   constructor() {
     super('HkqScene');
     this._cutscenePlaying = false;
     this._inputLocked = false;
   }
 
+  /**
+   * gotoMission(idx=0)
+   * 処理概要:
+   *  - Runner（命令実行器）のキューを強制クリア
+   *  - ミッション番号を範囲内に正規化してセット
+   *  - レベルを再構築（タイトル表示あり）
+   * @param {number} idx
+   */
+  gotoMission(idx = 0) {
+    this.clearRunnerQueue();   // ミッション開始時は必ずキューを空に
+    const last = (this.levels?.length || 1) - 1;
+    this.missionIndex = Phaser.Math.Clamp(idx|0, 0, last);
+    this.buildLevel(true);
+  }
+
   // ---- Lock helpers -------------------------------------------------------
+
+  /**
+   * lockGame()
+   * 処理概要:
+   *  - ゲーム内の入力とUI操作をロック（カットシーン等の演出中に使用）
+   */
   lockGame() {
     this._inputLocked = true;
     try { if (this.input.keyboard) this.input.keyboard.enabled = false; } catch(_) {}
     document.body.classList.add('ui-locked');
   }
+
+  /**
+   * unlockGame()
+   * 処理概要:
+   *  - ロック解除（演出終了時に呼び出し）
+   */
   unlockGame() {
     this._inputLocked = false;
     try { if (this.input.keyboard) this.input.keyboard.enabled = true; } catch(_) {}
     document.body.classList.remove('ui-locked');
   }
 
+  /** 内部: 占有セル用キー作成 */
   occKey(x, y) { return `${x},${y}`; }
+  /** 内部: 占有セル集合に追加 */
   addOccupied(set, x, y) { set.add(this.occKey(x, y)); }
 
+  /**
+   * pickFreeCell(occupied)
+   * 処理概要:
+   *  - 占有セル集合を避けて空きマスをランダムに探索
+   *  - 一定回数失敗したら走査で補完
+   * @param {Set<string>} occupied
+   * @returns {{x:number,y:number}|null}
+   */
   pickFreeCell(occupied) {
     for (let i = 0; i < 100; i++) {
       const x = Phaser.Math.Between(0, this.gridW - 1);
@@ -49,6 +92,13 @@ export class HkqScene extends Phaser.Scene {
   }
 
   // ---- Assets -------------------------------------------------------------
+
+  /**
+   * preload()
+   * 処理概要:
+   *  - レベルデータ（JSON）と各種アセット（ロボ/敵/床/ゴール/矢印/背景）をロード
+   *  - 画像はキー名で参照できるよう登録
+   */
   preload() {
     this.load.json('levels', 'assets/data/hkq-levels.json');
 
@@ -83,7 +133,14 @@ export class HkqScene extends Phaser.Scene {
   }
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
-  // 成功カットシーン：フェードアウト完了まで lock を維持し、その後に unlock
+
+  /**
+   * playCutsceneThen(next)
+   * 処理概要:
+   *  - レベル定義のカットシーン画像を全画面表示（In→Hold→Out）
+   *  - 再生中は lock、終了時に unlock → next() を呼ぶ
+   * @param {Function} next - 再生完了後のコールバック
+   */
   playCutsceneThen(next) {
     const imgPath = this.level?.cutscene?.image;
     if (!imgPath) { next?.(); return; }
@@ -131,7 +188,13 @@ export class HkqScene extends Phaser.Scene {
     else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
   }
 
-  // 途中カットシーン：演出だけ（同じ lock/unlock ポリシー）
+  /**
+   * playMidCutscene(path, next)
+   * 処理概要:
+   *  - 途中演出のカットシーンを表示（lock/unlock は成功と同じ）
+   * @param {string} path  - 画像ファイルパス
+   * @param {Function} next - 再生完了後のコールバック
+   */
   playMidCutscene(path, next) {
     if (this._cutscenePlaying) return;
     if (!path) { next?.(); return; }
@@ -178,7 +241,14 @@ export class HkqScene extends Phaser.Scene {
     else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
   }
 
-  // 失敗カットシーン：同様に最後でのみ unlock
+  /**
+   * playFailCutscene(path, next)
+   * 処理概要:
+   *  - 失敗演出のカットシーンを表示（最後に Runner キューを確実にクリア）
+   *  - 終了時に unlock し、next() を呼ぶ（多くは restart）
+   * @param {string} path
+   * @param {Function} next
+   */
   playFailCutscene(path, next) {
     if (!path) { next?.(); return; }
 
@@ -208,6 +278,8 @@ export class HkqScene extends Phaser.Scene {
               targets: node, alpha: 0, duration: 500, ease: 'quad.in',
               onComplete: () => {
                 node.destroy();
+                // restart 前に必ずキューを空にする
+                this.clearRunnerQueue();
                 // 終了で unlock
                 this._cutscenePlaying = false;
                 this.unlockGame();
@@ -223,24 +295,39 @@ export class HkqScene extends Phaser.Scene {
     if (this.textures.exists(texKey)) startShow();
     else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
   }
+
+  /**
+   * init(data)
+   * 処理概要:
+   *  - restart 時に渡された missionIndex を引き継ぐ
+   * @param {{missionIndex?:number}} data
+   */
   init(data) {
-    // restart時に渡された missionIndex を引き継ぐ
     if (data && Number.isFinite(data.missionIndex)) {
       this.missionIndex = data.missionIndex;
     }
   }
+
   // ---- Scene lifecycle ----------------------------------------------------
+
+  /**
+   * create()
+   * 処理概要:
+   *  - レベルデータ読込・ミッション番号の安全化
+   *  - アニメーション一度だけ構築 → レベル生成 → 背景反映
+   *  - 画面リサイズ時にレベルと背景を再構成
+   */
   create() {
     this.levels = loadLevels(this);
-    // init(data) で受け取れていない（=初回起動など）のときだけ 0 をセット
-    if (typeof this.missionIndex !== 'number') {
-      this.missionIndex = 0;
-    }
+    if (!Number.isFinite(this.missionIndex)) this.missionIndex = 0;
+    const last = (this.levels?.length || 1) - 1;
+    if (this.missionIndex < 0 || this.missionIndex > last) this.missionIndex = 0;
 
     this.createAnimations();
     this.buildLevel(true);
-    this.updateBackground(); // ここで背景を反映
-    // Resize handling
+    this.updateBackground();
+
+    // Resize handling（連続 resize をデバウンス）
     this._lastSize = { w: this.scale.width, h: this.scale.height };
     this._resizeTid = null;
     this.scale.on('resize', () => {
@@ -250,13 +337,16 @@ export class HkqScene extends Phaser.Scene {
       this._resizeTid = setTimeout(() => {
         this._lastSize = { w, h };
         this.buildLevel(false);
-        this.updateBackground(); 
+        this.updateBackground();
       }, 120);
     });
-
   }
 
-  // 方向アイコンを一時表示
+  /**
+   * showDirectionIcon(dirKey, cellX, cellY)
+   * 処理概要:
+   *  - 一手の移動時にアイソメ矢印をふわっと表示 → 自動消滅
+   */
   showDirectionIcon(dirKey, cellX, cellY) {
     const key = ISO_ARROW[dirKey];
     if (!key) return;
@@ -269,18 +359,53 @@ export class HkqScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * createAnimations()
+   * 処理概要:
+   *  - アニメーション（robot/monster）をゲーム単位で一度だけ作成
+   *  - シーン再起動時の重複登録を回避
+   */
   createAnimations() {
-    this.anims.create({ key: 'robot_idle', frames: [{ key: 'robot_idle0' }, { key: 'robot_idle1' }], frameRate: 2, repeat: -1 });
-    this.anims.create({ key: 'robot_walk', frames: Array.from({ length: 8 }, (_, i) => ({ key: `robot_walk${i}` })), frameRate: 10, repeat: -1 });
-    this.anims.create({ key: 'robot_cheer', frames: [{ key: 'robot_cheer0' }, { key: 'robot_cheer1' }], frameRate: 6, repeat: -1 });
-    this.anims.create({ key: 'monsterA_idle', frames: [{ key: 'monsterA_idle1' }, { key: 'monsterA_idle2' }], frameRate: 2, repeat: -1 });
-    this.anims.create({ key: 'robot_sad', frames: [{ key: 'robot_sad1' }, { key: 'robot_sad2' }, { key: 'robot_sad3' }], frameRate: 6, repeat: -1 });
+    if (this.sys.game.__hkqAnimsBuilt) return;
+    this.sys.game.__hkqAnimsBuilt = true;
+
+    this.anims.create({ key: 'robot_idle',
+      frames: [{ key: 'robot_idle0' }, { key: 'robot_idle1' }],
+      frameRate: 2, repeat: -1
+    });
+    this.anims.create({ key: 'robot_walk',
+      frames: Array.from({ length: 8 }, (_, i) => ({ key: `robot_walk${i}` })),
+      frameRate: 10, repeat: -1
+    });
+    this.anims.create({ key: 'robot_cheer',
+      frames: [{ key: 'robot_cheer0' }, { key: 'robot_cheer1' }],
+      frameRate: 6, repeat: -1
+    });
+    this.anims.create({ key: 'monsterA_idle',
+      frames: [{ key: 'monsterA_idle1' }, { key: 'monsterA_idle2' }],
+      frameRate: 2, repeat: -1
+    });
+    this.anims.create({ key: 'robot_sad',
+      frames: [{ key: 'robot_sad1' }, { key: 'robot_sad2' }, { key: 'robot_sad3' }],
+      frameRate: 6, repeat: -1
+    });
   }
 
+  /** snap(v): ピクセル位置の丸め */
   snap(v) { return Math.round(v); }
 
   // ---- Build a level ------------------------------------------------------
+
+  /**
+   * buildLevel(showTitle)
+   * 処理概要:
+   *  - Runner キューの完全クリア（前ミッション残りを無効化）
+   *  - グリッド/開始位置/コマンド上限/背景など、レベル要素を組み立て
+   *  - UI へ上限を通知し、タイトル表示やインベントリも初期化
+   * @param {boolean} showTitle - タイトル演出を表示するか
+   */
   buildLevel(showTitle) {
+    this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
     const L = this.levels[this.missionIndex] || {};
     this.level = L;
 
@@ -294,7 +419,7 @@ export class HkqScene extends Phaser.Scene {
     this.cmdCap = Number.isFinite(L.cmdCap) ? L.cmdCap : 10;
     this.repeatInnerCap = Number.isFinite(L.repeatInnerCap) ? L.repeatInnerCap : 3;
 
-    // UIへ通知（レベル切り替え時に飛ぶ）
+    // UIへ通知（レベル切り替え時）
     document.dispatchEvent(new CustomEvent('hkq:limits', {
       detail: { cmdCap: this.cmdCap, repeatInnerCap: this.repeatInnerCap }
     }));
@@ -329,6 +454,8 @@ export class HkqScene extends Phaser.Scene {
       gap: 2, lineColor: 0x44506b, lineAlpha: 1, baseIsoX: this._baseIsoX
     });
     this.fieldLayer.add(tiles);
+
+    if (window.clearRunnerQueue) window.clearRunnerQueue();
 
     // ゴール位置：level.goal を優先。なければ spec に従う
     this.goalCell = (L.goal && Number.isFinite(L.goal.x) && Number.isFinite(L.goal.y))
@@ -373,7 +500,7 @@ export class HkqScene extends Phaser.Scene {
     occupied.add(this.occKey(this.startCell.x, this.startCell.y));
     occupied.add(this.occKey(this.goalCell.x,  this.goalCell.y));
 
-    // ピックアップ
+    // ピックアップ定義
     const pickupDefs = Array.isArray(L.pickups) ? L.pickups : [];
 
     // WEAPON
@@ -392,7 +519,7 @@ export class HkqScene extends Phaser.Scene {
 
     // KEY
     const keyDef = pickupDefs.find(p => p.type === 'key');
-    this._hasKeyPickup = !!(keyDef && (keyDef.count|0) > 0); // ★ 追加
+    this._hasKeyPickup = !!(keyDef && (keyDef.count|0) > 0); // この面にキーが存在するか
     if (keyDef && (keyDef.count|0) > 0) {
       const cellK = this.pickFreeCell(occupied);
       if (cellK) {
@@ -437,7 +564,7 @@ export class HkqScene extends Phaser.Scene {
       }
     });
 
-    // クリア条件のテキスト初期化
+    // クリア条件UI更新
     try {
       const t = document.getElementById('mission-clear-text');
       if (t) {
@@ -459,18 +586,29 @@ export class HkqScene extends Phaser.Scene {
       document.body.classList.remove('ui-locked', 'boot');
     }
 
-    // インベントリ最後に初期化
+    // インベントリ初期化
     this.inventory = { weapon: false, key: false };
     this.renderItemBox();
     this.updateBackground();
   }
 
+  /**
+   * emitMissionStart()
+   * 処理概要:
+   *  - 現在のミッション番号とレベル定義を DOM へ通知（UI/外部側がフック）
+   */
   emitMissionStart() {
     document.dispatchEvent(new CustomEvent('hkq:mission-start', {
       detail: { mission: this.missionIndex, level: this.level }
     }));
   }
 
+  /**
+   * showMissionTitle(text, onDone)
+   * 処理概要:
+   *  - 画面上部にタイトルをふわっと表示（In→Hold→Out）
+   *  - 演出中は UI をロックし、終了時に解除してコールバック
+   */
   showMissionTitle(text, onDone) {
     const W = this.scale.gameSize.width, H = this.scale.gameSize.height;
     try { this.titleText?.destroy(); } catch (_) {}
@@ -492,6 +630,12 @@ export class HkqScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * isAtGoal()
+   * 処理概要:
+   *  - ロボの現在セル/座標がゴールに到達しているかを厳密/近似で判定
+   * @returns {boolean}
+   */
   isAtGoal() {
     if (!this.goalCell || !this.robotCell) return false;
     if (this.robotCell.x === this.goalCell.x && this.robotCell.y === this.goalCell.y) return true;
@@ -504,6 +648,12 @@ export class HkqScene extends Phaser.Scene {
     return false;
   }
 
+  /**
+   * handleGoalReached()
+   * 処理概要:
+   *  - ゴール到達時の演出 → 次ミッション/リセットへ遷移
+   *  - 最終面ならコンプリート後に1面へ戻る
+   */
   handleGoalReached() {
     this._cleared = true;
     this.robotSpr.play('robot_cheer', true);
@@ -532,9 +682,17 @@ export class HkqScene extends Phaser.Scene {
   }
 
   // ---- Tick (one op) ------------------------------------------------------
+
+  /**
+   * onTick(op)
+   * 処理概要:
+   *  - 1手（↑↓→←）を処理。移動・演出・ピックアップ・敵判定・ゴール判定を包括
+   *  - カットシーン中/ロック中/クリア後は進めない
+   * @param {string} op - 入力（'up'/'down'/'left'/'right' ほか日本語/矢印記号も許容）
+   */
   onTick(op) {
     if (this._cleared) return;
-    if (this._cutscenePlaying || this._inputLocked) return; // ガード（カットシーン中は進めない） [oai_citation:2‡hkq-scene.js](file-service://file-MeEYata4xmAhoWeqi7K8ip)
+    if (this._cutscenePlaying || this._inputLocked) return;
 
     const DIR = {
       up: { dx: 0, dy: -1 }, down: { dx: 0, dy: 1 },
@@ -579,12 +737,11 @@ export class HkqScene extends Phaser.Scene {
         const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
         if (enemy) {
           if (this.inventory.weapon) {
-            // 途中演出 → 撃破（※ 自動キー付与は撤去）
+            // 途中演出 → 撃破（※ 自動キー付与は面にキーが無いときのみ）
             this.playMidCutscene('assets/cutscene/monster_battle.png', () => {
               try { enemy.spr.destroy(); } catch(_) {}
               this.monsters = this.monsters.filter(m => m !== enemy);
               document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail: { type: 'monster-a' } }));
-              // ★ フォールバック付与：キー未所持 & この面に key ピックアップが無い時だけ付与
               if (!this.inventory.key && !this._hasKeyPickup) {
                 this.inventory.key = true;
                 this.renderItemBox();
@@ -635,6 +792,12 @@ export class HkqScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * cellToXY(x,y)
+   * 処理概要:
+   *  - グリッド座標→アイソメ座標へ変換（描画用オフセット含む）
+   * @returns {{x:number,y:number}}
+   */
   cellToXY(x, y) {
     const sx = isoX(x, y, this._isoW, this._isoH) + (this._baseIsoX || 0);
     const sy = isoY(x, y, this._isoW, this._isoH);
@@ -642,6 +805,11 @@ export class HkqScene extends Phaser.Scene {
     return { x: this.snap(sx), y: this.snap(sy + OFFSET_Y) };
   }
 
+  /**
+   * renderItemBox()
+   * 処理概要:
+   *  - 所持中の武器/キーをUIスロットに反映（アイコン画像を差し替え）
+   */
   renderItemBox() {
     const box = document.getElementById('item-box');
     if (!box) return;
@@ -657,6 +825,12 @@ export class HkqScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * updateBackground()
+   * 処理概要:
+   *  - マップ（fieldBounds）に合わせて背景画像(bg_moon)を拡大/配置
+   *  - 画面中央に準わせて少し大きめに表示（雰囲気重視）
+   */
   updateBackground() {
     const b = this._fieldBounds;
     if (!b) return;
@@ -664,7 +838,7 @@ export class HkqScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.scale.gameSize.width, this.scale.gameSize.height);
 
-    // ① 拡大係数（例: 1.25 = 25%大きく）
+    // ① 拡大係数（例: 2.50 = 2.5倍）
     const scaleK = 2.50;
     const w = Math.floor(b.w * scaleK);
     const h = Math.floor(b.h * scaleK);
@@ -681,5 +855,15 @@ export class HkqScene extends Phaser.Scene {
     }
 
     this.bg.setPosition(x, y).setDisplaySize(w, h);
+  }
+
+  /**
+   * clearRunnerQueue()
+   * 処理概要:
+   *  - Main 側（window.clearRunnerQueue）に委譲して命令キュー/実行器を完全リセット
+   *  - ミッション切替/失敗カットシーン前などで呼ぶ安全フック
+   */
+  clearRunnerQueue() {
+    window.clearRunnerQueue?.();
   }
 }
