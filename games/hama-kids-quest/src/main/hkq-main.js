@@ -82,6 +82,12 @@ const repeatSelect = document.getElementById("repeat-count");
 
 /* ============ Runner（公開参照） ============ */
 let mission = null;
+
+// ▼ 追加：Mission を起動（DOMに #mission-panel / #mission-clear-text がある前提）
+try {
+  mission = new Mission(null);
+} catch (_) {}
+
 let interp = newRunner(programList);
 window.currentRunner = interp;
 

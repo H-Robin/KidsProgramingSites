@@ -24,11 +24,6 @@
     <div id="mission-label" class="mission">ミッション 1</div>
     <div id="elapsed" class="elapsed">00:00</div>
   </header>
-    <!-- ミッションクリア条件パネル -->
-    <section id="mission-clear" class="pane mission-clear">
-      <h3>Mission</h3>
-      <div id="mission-clear-text">ロボットを月面基地へ向かうこと</div>
-    </section>
     <!-- 残りコマンド数・ヒント表示 -->
     <ol id="program-list"></ol>
 
@@ -37,13 +32,24 @@
       <div id="cmd-hint" class="cmd-hint" aria-live="polite">【ヒント：】</div>
     </div>
   <div id="app">
-    <!-- 左：フィールド（キャンバスが全域にフィット） -->
-    <div id="stage-left">
-      <div id="game-container"></div>
+  <!-- 左：フィールド（キャンバスが全域にフィット） -->
+  <div id="stage-left">
+    <div id="game-container">
+      <!-- ▼ 追加：Phaserキャンバス上に重ねるHUD（ミッションステータス） -->
+      <div id="hud-mission" class="hud-mission" aria-hidden="false">
+        <div id="mission-panel" class="mission-panel" aria-label="Mission Status"></div>
+      </div>
     </div>
-
+  </div>
     <!-- 右：命令UI（上下） -->
     <aside id="sidebar-right">
+      <section id="mission-clear" class="pane mission-clear">
+          <h3>Mission</h3>
+          <div id="mission-clear-text">ロボットを月面基地へ向かうこと</div>
+          <div id="cmd-limit-bar" class="cmd-limit">
+          【のこりコマンド数：<span id="cmd-left">10</span>】
+      </section>
+
       <div class="pane">
         <h3>命令パレット</h3>
         <div id="palette"></div>
