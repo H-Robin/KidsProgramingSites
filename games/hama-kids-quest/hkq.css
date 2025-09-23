@@ -198,7 +198,7 @@ body {
   height: 100dvh;
 }
 #stage-left{ background:var(--field-bg); display:flex; }
-#game-container{ width:100%; height:85%; display:flex; justify-content:center; }
+#game-container{ width:100%; height:100%; display:flex; justify-content:center; }
 #sidebar-right{ background:#d3d4d7; border-left:2px solid #fff; padding:12px; overflow:auto; }
 
 /* タイトルバー */
@@ -479,7 +479,7 @@ body.ui-locked #exit{
   /* HUDの位置・拡大率 */
   --hud-mission-scale: 1;      /* HUD全体スケール */
   --hud-mission-right: 12px;   /* 右端オフセット */
-  --hud-mission-top: 12px;     /* 上端オフセット */
+  --hud-mission-top: 56px;     /* 上端オフセット */
   --hud-mission-z: 2000;       /* 重なり順（Phaser上に出す） */
 }
 
@@ -514,7 +514,7 @@ body.ui-locked #exit{
   transform-origin: top right;
   z-index: var(--hud-mission-z);
   pointer-events: none; /* クリックは基本スルー（必要なら内側で上書き） */
-  top:400px;  /* 上端の位置 */
+  /* top:400px; */  /* 上端の位置 */
   right: 12px;
 }
 
