@@ -51,10 +51,28 @@ function newRunner(listEl) {
    ========================= */
 window.HKQ_CMD_LIMIT = initCommandLimitUI({
   programListSel: "#program",
-  paletteBtnSel: ".palette .btn",
+  paletteBtnSel: "#palette .cmd, #palette [data-op]",
   capBarSel: "#cmd-limit-bar",
   leftSel: "#cmd-left",
   hintSel: "#cmd-hint",
+});
+
+// ★ JSONのcmdCapを反映する（hkq-scene.js が投げるイベントを受信）
+document.addEventListener('hkq:limits', (e) => {
+  const cap = Number(e?.detail?.cmdCap);
+  if (!Number.isFinite(cap)) return;
+  // 内部cap更新
+  if (window.HKQ_CMD_LIMIT?.setCap) {
+    window.HKQ_CMD_LIMIT.setCap(cap);
+  } else {
+    // フォールバック：プロパティに直接入れてもOKな実装に合わせる
+    window.HKQ_CMD_LIMIT && (window.HKQ_CMD_LIMIT.cap = cap);
+  }
+  // 表示を即更新
+  window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+  // デバッグ
+  console.debug('[hkq:limits] cmdCap from JSON =', cap,
+                ' => UI left =', document.getElementById('cmd-left')?.textContent);
 });
 
 /* ============ Phaser 設定 ============ */
@@ -405,3 +423,59 @@ function onPalettePress(ev) {
  */
 document.addEventListener("hkq:lock", () => document.body.classList.add("ui-locked"));
 document.addEventListener("hkq:unlock", () => document.body.classList.remove("ui-locked"));
+
+/* ================= HUD: Mission 表示/非表示トグル（自動フェードつき） ================= */
+(function setupMissionToggle(){
+  const hud   = document.getElementById('hud-mission');
+  const btn   = document.getElementById('btn-toggle-mission');
+  const gc    = document.getElementById('game-container');
+  if (!hud || !btn || !gc) return;
+
+  const LS_KEY = 'hkq.hud.mission.visible';
+  let hideTimer = null;
+
+  function apply(visible){
+    hud.style.display = visible ? '' : 'none';
+    hud.setAttribute('aria-hidden', String(!visible));
+    btn.setAttribute('aria-pressed', String(visible));
+    try { localStorage.setItem(LS_KEY, visible ? '1' : '0'); } catch(_){}
+    showTemporarily();
+  }
+
+  function showTemporarily(){
+    btn.classList.remove('is-faded');
+    clearTimeout(hideTimer);
+    // 1.8s 後に自動フェード（必要なら時間は調整可）
+    hideTimer = setTimeout(() => btn.classList.add('is-faded'), 1800);
+  }
+
+  // 初期状態：保存を優先（既定は表示）
+  let v = true;
+  try { v = (localStorage.getItem(LS_KEY) ?? '1') === '1'; } catch(_){}
+  apply(v);
+
+  // クリックでトグル
+  btn.addEventListener('click', () => apply(btn.getAttribute('aria-pressed') !== 'true'));
+  btn.addEventListener('mouseenter', showTemporarily);
+
+  // キー M でトグル（入力中は無効）
+  document.addEventListener('keydown', (e) => {
+    if (e.key?.toLowerCase() !== 'm') return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+    apply(btn.getAttribute('aria-pressed') !== 'true');
+  });
+
+  // 右上近辺にマウスが来たら一時表示
+  gc.addEventListener('mousemove', (e) => {
+    const r = gc.getBoundingClientRect();
+    const nearTopRight = (e.clientY - r.top) < 120 && (r.right - e.clientX) < 160;
+    if (nearTopRight) showTemporarily();
+  });
+
+  // UIロック解除時にも保存状態を適用＆ボタンを一時表示
+  document.addEventListener('hkq:unlock', () => {
+    const saved = (localStorage.getItem(LS_KEY) ?? '1') === '1';
+    apply(saved);
+  });
+})();

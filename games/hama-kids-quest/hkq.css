@@ -488,6 +488,23 @@ body.ui-locked #exit{
   position: relative; /* ★ 重要：HUDをabsolute配置する土台 */
 }
 
+/* HUDトグルボタン（ゲーム画面の右上に常駐） */
+.hud-mission-toggle{
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3000;          /* HUDより前 */
+  pointer-events: auto;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(56,189,248,.35);
+  background: rgba(16,24,32,.85);
+  color: #e6f0ff;
+}
+.hud-mission-toggle[aria-pressed="false"]{
+  opacity: .7;
+}
+
 /* HUDコンテナ（Phaserキャンバス上にオーバーレイ） */
 .hud-mission{
   position: absolute;
@@ -497,6 +514,8 @@ body.ui-locked #exit{
   transform-origin: top right;
   z-index: var(--hud-mission-z);
   pointer-events: none; /* クリックは基本スルー（必要なら内側で上書き） */
+  top:400px;  /* 上端の位置 */
+  right: 12px;
 }
 
 /* ミッション欄（画像＋文字のリスト） */
