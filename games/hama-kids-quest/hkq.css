@@ -227,7 +227,7 @@ titlebar .mission{ opacity:.9; }
 #palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;              /* ボタン間隔を少し広げる */
+  gap: px;              /* ボタン間隔を少し広げる */
   justify-content: space-between;
   max-width: 380px;       /* 任意の横幅に調整 */
 }

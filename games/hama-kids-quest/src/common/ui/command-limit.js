@@ -1,103 +1,135 @@
-// src/ui/command-limit.js
-// コマンド上限UI制御（トップレベル上限 & repeat内上限）
-// 使い方：importして initCommandLimitUI({...}) を1回呼ぶだけ。
+// src/common/ui/command-limit.js
+// hkq-main.js からの期待API：initCommandLimitUI({ programListSel, paletteBtnSel, capBarSel, leftSel, hintSel })
+// 返却オブジェクト：{ setCap, refreshCapUI, recalc, addTopLevelCmd, addInsideRepeat, addTopLevelBlock }
 
-export function initCommandLimitUI({
-  programListSel = '#program-list',
-  paletteBtnSel = '.palette .btn',
-  capBarSel = '#cmd-limit-bar',
-  leftSel = '#cmd-left',
-  hintSel = '#cmd-hint',
-}) {
-  const programList = document.querySelector(programListSel);
-  const leftEl = document.querySelector(leftSel);
-  const barEl = document.querySelector(capBarSel);
-  const hintEl = document.querySelector(hintSel);
-  if (!programList || !leftEl || !barEl || !hintEl) {
-    console.warn('[command-limit] missing elements');
-    return;
+export function initCommandLimitUI(opts = {}) {
+  const programList = document.querySelector(opts.programListSel || "#program");
+  const capBar      = document.querySelector(opts.capBarSel || "#cmd-limit-bar");
+  const leftEl      = document.querySelector(opts.leftSel || "#cmd-left");
+  const hintEl      = document.querySelector(opts.hintSel || "#cmd-hint");
+
+  // === 内部状態 ===
+  let cap = toInt(leftEl?.textContent, 10) || 10;
+
+  function toInt(v, d = 0) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n | 0 : d;
   }
 
-  let CMD_CAP = 10;
-  let REPEAT_INNER_CAP = 3;
-
-  // ===== helpers =====
-  const countTopLevelBlocks = () =>
-    programList.querySelectorAll(':scope > .cmd, :scope > .repeat').length;
-
-  const refreshCapUI = () => {
-    const used = countTopLevelBlocks();
-    const left = Math.max(0, CMD_CAP - used);
-    leftEl.textContent = String(left);
-    barEl.classList.toggle('full', left === 0);
-    if (left > 0 && hintEl.dataset.locked !== '1') {
-      hintEl.textContent = '【ヒント：】';
-    }
-    document.querySelectorAll(paletteBtnSel).forEach(btn=>{
-      btn.classList.toggle('disabled', left === 0);
+  // 直下の .cmd だけ数えるヘルパ（:scope 非依存）
+  function countDirectCmdChildren(root) {
+    if (!root) return 0;
+    let c = 0;
+    root.childNodes.forEach((n) => {
+      if (n.nodeType === 1 && n.classList.contains("cmd")) c++;
     });
-  };
-
-  const showUseRepeatHint = (msg = '【ヒント：くりかえしコマンドを使ってください】') => {
-    hintEl.textContent = msg;
-    hintEl.dataset.locked = '1';
-    barEl.classList.add('full');
-    barEl.animate([{transform:'scale(1)'},{transform:'scale(1.03)'},{transform:'scale(1)'}], {duration:220});
-    setTimeout(()=>{ hintEl.dataset.locked = '0'; }, 1500);
-  };
-
-  // ===== public-ish hooks（既存UIから使えるよう window に載せる） =====
-  function addTopLevelBlock(node) {
-    const used = countTopLevelBlocks();
-    if (used >= CMD_CAP) { showUseRepeatHint(); return false; }
-    programList.appendChild(node);
-    refreshCapUI();
-    return true;
+    return c;
   }
-  function canPushIntoRepeat(repeatBodyEl) {
-    const innerCmds = repeatBodyEl.querySelectorAll(':scope > .cmd');
-    return innerCmds.length < REPEAT_INNER_CAP;
+
+  // 使用数の定義：
+  // - トップレベル: #program 直下の .cmd
+  // - くり返し内  : .block.repeat .repeat-body 直下の .cmd
+  // - ブロック自体（.block.repeat）はコスト 0
+  function countUsed() {
+    if (!programList) return 0;
+    const top = countDirectCmdChildren(programList);
+    let inRepeat = 0;
+    programList.querySelectorAll(".block.repeat .repeat-body").forEach((body) => {
+      inRepeat += countDirectCmdChildren(body);
+    });
+    const used = top + inRepeat;
+    return used;
   }
-  function addInsideRepeat(repeatBodyEl, cmdNode) {
-    if (!canPushIntoRepeat(repeatBodyEl)) {
-      showUseRepeatHint('【ヒント：くりかえし内は最大3コマンドまでです】');
+
+  // UI更新（残りコマンド数 = cap - used）
+  function refreshCapUI() {
+    const used = countUsed();
+    const left = Math.max(0, cap - used);
+    if (leftEl) leftEl.textContent = String(left);
+    // デバッグログ
+    console.debug("[command-limit] refreshCapUI: cap=", cap, "used=", used, "left=", left);
+    return left;
+  }
+
+  // 外からcapを設定
+  function setCap(nextCap) {
+    const nv = toInt(nextCap, cap);
+    cap = nv;
+    if (leftEl) leftEl.textContent = String(Math.max(0, cap - countUsed()));
+    console.debug("[command-limit] setCap:", cap);
+  }
+
+  // 既存配置を考慮して再計算（外部から呼ばれる想定）
+  function recalc() {
+    console.debug("[command-limit] recalc() 呼び出し");
+    return refreshCapUI();
+  }
+
+  // 上限チェック：1つ追加できるか？
+  function canAddOne() {
+    const used = countUsed();
+    const ok = used + 1 <= cap;
+    console.debug("[command-limit] canAddOne? used+1=", used + 1, "cap=", cap, "=>", ok);
+    return ok;
+  }
+
+  // 追加：トップレベル .cmd
+  // 戻り値：false=上限超過、true=ライブラリ側でappendした、undefined=ライブラリのappendを使わない
+  function addTopLevelCmd(node) {
+    if (!programList || !node) return false;
+    if (!canAddOne()) {
+      hint("コマンド上限です");
       return false;
     }
-    repeatBodyEl.appendChild(cmdNode);
+    // ここでは「appendは呼び出し側でも可能」な契約のため、undefinedを返してフォールバックに任せてもOK。
+    // ただし UI の一貫性のため、このライブラリ側で append してしまう方が安全。
+    programList.appendChild(node);
+    const left = refreshCapUI();
+    console.debug("[command-limit] addTopLevelCmd: 追加 -> left=", left);
     return true;
   }
 
-  // 既存の追加/削除/D&Dコードから呼べるように公開
-  window.HKQ_CMD_LIMIT = { addTopLevelBlock, canPushIntoRepeat, addInsideRepeat, refreshCapUI };
-
-  // ===== wire events =====
-  // シーン（hkq-scene.js）から上限を受け取る
-  document.addEventListener('hkq:limits', (e)=>{
-    const d = e.detail || {};
-    CMD_CAP = Number.isFinite(d.cmdCap) ? d.cmdCap : 10;
-    REPEAT_INNER_CAP = Number.isFinite(d.repeatInnerCap) ? d.repeatInnerCap : 3;
-    refreshCapUI();
-  });
-
-  // トップレベル：削除ボタンで残り数更新
-  programList.addEventListener('click', (e)=>{
-    const del = e.target.closest('.cmd .del, .repeat .del');
-    if (del) { del.closest('.cmd, .repeat')?.remove(); refreshCapUI(); }
-  });
-
-  // トップレベル：ドラッグ＆ドロップ追加をガード（必要なら）
-  programList.addEventListener('dragover', e=>e.preventDefault());
-  programList.addEventListener('drop', (e)=>{
-    e.preventDefault();
-    const used = countTopLevelBlocks();
-    if (used >= CMD_CAP) { showUseRepeatHint(); return; }
-    // 既存の生成関数がある前提。無ければここは各実装に合わせて差し替え
-    if (window.buildNodeFromDataTransfer) {
-      const node = window.buildNodeFromDataTransfer(e.dataTransfer);
-      if (node) addTopLevelBlock(node);
+  // 追加：くり返しブロック内 .cmd
+  function addInsideRepeat(bodyEl, node) {
+    if (!bodyEl || !node) return false;
+    if (!canAddOne()) {
+      hint("コマンド上限です（くり返し内）");
+      return false;
     }
-  });
+    bodyEl.appendChild(node);
+    const left = refreshCapUI();
+    console.debug("[command-limit] addInsideRepeat: 追加 -> left=", left);
+    return true;
+  }
+
+  // 追加：トップレベルの「くり返し」ブロック（コスト0）
+  function addTopLevelBlock(blockEl) {
+    if (!programList || !blockEl) return false;
+    programList.appendChild(blockEl);
+    const left = refreshCapUI();
+    console.debug("[command-limit] addTopLevelBlock: 追加(コスト0) -> left=", left);
+    return true;
+  }
+
+  // ヒント表示（任意）
+  function hint(text) {
+    if (!hintEl) return;
+    hintEl.textContent = `【ヒント：${text}】`;
+  }
 
   // 初期描画
   refreshCapUI();
+
+  // 返却API（hkq-main.js が期待する名前に揃える）
+  return {
+    setCap,
+    refreshCapUI,
+    recalc,
+    addTopLevelCmd,
+    addInsideRepeat,
+    addTopLevelBlock,
+    // デバッグ向け：現在値を覗けるように（任意）
+    get cap() { return cap; },
+    set cap(v) { setCap(v); },
+  };
 }
