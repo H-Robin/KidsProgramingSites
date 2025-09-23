@@ -3,7 +3,7 @@ export const MISSION_ICON_MAP = {
   "ロボット":     "assets/robot/idle/character_robot_idle0.png",
   "モンスター":   "assets/enemy/monster-a/idle/idle1.png",
   "ゲートカード": "assets/items/gatecard.png",
-  "ゴール":       "assets/floor/goal.png",
+  "ゴール":       "assets/floor/moon_base_goal.png",
   "ブラスターガン":"assets/weapon/blaster-a.png",
 };
 /** アイコン登録（既存キー上書き可） */
