@@ -134,6 +134,14 @@ export class HkqScene extends Phaser.Scene {
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
 
+  // 追加：レベルJSONからカットシーン画像パスを取るヘルパ
+  getCutscenePath(id){
+    const v = this.level?.[id];
+    if (v && typeof v.image === 'string' && v.image) return v.image;
+    if (!id && this.level?.cutscene?.image) return this.level.cutscene.image; // 旧仕様フォールバック
+    return null;
+  }
+
   /**
    * playCutsceneThen(next)
    * 処理概要:
@@ -141,52 +149,56 @@ export class HkqScene extends Phaser.Scene {
    *  - 再生中は lock、終了時に unlock → next() を呼ぶ
    * @param {Function} next - 再生完了後のコールバック
    */
-  playCutsceneThen(next) {
-    const imgPath = this.level?.cutscene?.image;
-    if (!imgPath) { next?.(); return; }
+playCutsceneThen(next, overridePath) {
+  const imgPath = overridePath || this.level?.cutscene?.image || null;
+  if (!imgPath) { next?.(); return; }
 
-    const texKey = `cutscene:${this.level.id}`;
-    const startShow = () => {
-      const cam = this.cameras.main;
-      const cx = cam.worldView.centerX ?? cam.centerX;
-      const cy = cam.worldView.centerY ?? cam.centerY;
+  // パス基準でテクスチャキーを作る（同名レベル間での競合回避）
+  const texKey = `cutscene:${imgPath}`;
 
-      const node = this.add.image(cx, cy, texKey)
-        .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
+  const startShow = () => {
+    const cam = this.cameras.main;
+    const cx = cam.worldView.centerX ?? cam.centerX;
+    const cy = cam.worldView.centerY ?? cam.centerY;
 
-      const vw = cam.width, vh = cam.height;
-      const iw = node.width || 1024, ih = node.height || 512;
-      node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
+    const node = this.add.image(cx, cy, texKey)
+      .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
 
-      // 開始で lock
-      this._cutscenePlaying = true;
-      this.lockGame();
-      document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+    const vw = cam.width, vh = cam.height;
+    const iw = node.width || 1024, ih = node.height || 512;
+    node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
 
-      // In → hold → Out
-      this.tweens.add({
-        targets: node, alpha: 1, duration: 500, ease: 'quad.out',
-        onComplete: () => {
-          this.time.delayedCall(1000, () => {
-            this.tweens.add({
-              targets: node, alpha: 0, duration: 500, ease: 'quad.in',
-              onComplete: () => {
-                node.destroy();
-                // 終了で unlock（ここだけ）
-                this._cutscenePlaying = false;
-                this.unlockGame();
-                document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
-                next?.();
-              }
-            });
+    this._cutscenePlaying = true;
+    this.lockGame();
+    document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+
+    this.tweens.add({
+      targets: node, alpha: 1, duration: 500, ease: 'quad.out',
+      onComplete: () => {
+        this.time.delayedCall(1000, () => {
+          this.tweens.add({
+            targets: node, alpha: 0, duration: 500, ease: 'quad.in',
+            onComplete: () => {
+              node.destroy();
+              this._cutscenePlaying = false;
+              this.unlockGame();
+              document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
+              next?.();
+            }
           });
-        }
-      });
-    };
+        });
+      }
+    });
+  };
 
-    if (this.textures.exists(texKey)) startShow();
-    else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
+  if (this.textures.exists(texKey)) {
+    startShow();
+  } else {
+    this.load.once('complete', startShow);
+    this.load.image(texKey, imgPath);
+    this.load.start();
   }
+}
 
   /**
    * playMidCutscene(path, next)
@@ -772,13 +784,24 @@ export class HkqScene extends Phaser.Scene {
         // 4) ゴール到達（鍵チェック）
         if (this.isAtGoal()) {
           if (this.inventory.key) {
+            // 成功: JSON "goal-success.image" を最優先、無ければ旧 "cutscene.image"
+            const okPath =
+              this.level?.['goal-success']?.image ||
+              this.level?.cutscene?.image ||
+              null;
+
             document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
-            this.playCutsceneThen(() => this.handleGoalReached());
+            // ← 第2引数で成功用の画像パスを渡す
+            this.playCutsceneThen(() => this.handleGoalReached(), okPath);
             return;
           } else {
-            // 鍵なし → 失敗演出＋しょんぼり
+            // 失敗: JSON "goal-failed.image" を最優先、無ければ従来の固定画像
+            const ngPath =
+              this.level?.['goal-failed']?.image ||
+              'assets/cutscene/mission-failed2.png'; // ※ ".png.png" ではなく ".png"
+
             this.robotSpr.play('robot_sad', true);
-            this.playFailCutscene('assets/cutscene/mission-failed2.png', () => {
+            this.playFailCutscene(ngPath, () => {
               this.scene.restart({ missionIndex: this.missionIndex });
             });
             return;

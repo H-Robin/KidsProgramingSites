@@ -15,7 +15,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 4,
     "repeatInnerCap": 3 
   },
@@ -41,7 +42,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 4,
     "repeatInnerCap": 3 
   },
@@ -61,7 +63,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 5,
     "repeatInnerCap": 3 
   },  
@@ -80,7 +83,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "ゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 5,
     "repeatInnerCap": 3 
   },
@@ -100,7 +104,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "【くり返し】を使ってゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 3,
     "repeatInnerCap": 3 
   },
@@ -126,7 +131,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 3,
     "repeatInnerCap": 3 
   },
@@ -146,7 +152,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "【くり返し】を使ってゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 3,
     "repeatInnerCap": 3 
   },  
@@ -165,7 +172,8 @@
         { "id": "reach_goal", "type": "reach", "target": "goal", "text": "【くり返し】を使ってゴールに到達" }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 5,
     "repeatInnerCap": 3 
   },
@@ -198,8 +206,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
-    "cmdCap": 8,
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "repeatInnerCap": 3 
   },
   {
@@ -231,7 +239,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 8,
     "repeatInnerCap": 3 
   },
@@ -264,7 +273,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 6,
     "repeatInnerCap": 3 
   },
@@ -297,7 +307,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 8,
     "repeatInnerCap": 3 
   },
@@ -330,7 +341,8 @@
         }
       ]
     },
-    "cutscene": { "image": "assets/cutscene/mission-success1.png" },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
     "cmdCap": 8,
     "repeatInnerCap": 3 
 
