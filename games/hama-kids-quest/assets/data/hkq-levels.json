@@ -422,8 +422,8 @@
     },
     "cmdCap": 8,
     "repeatInnerCap": 3 
-  }
-  {
+  },
+    {
     "id": "M5　モンスターを倒す",
     "gridW": 7,
     "gridH": 5,
