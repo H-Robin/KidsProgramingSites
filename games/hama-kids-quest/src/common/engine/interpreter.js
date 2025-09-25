@@ -92,7 +92,7 @@ export class Interpreter {
     this.stop();
     this._prog = this.readProgram();
     this.ip = 0;
-
+    this.isRunning = true;   // ★ 実行中フラグON
     // ロック中なら解除待ち（_applyPause が再開を担当）
     if (this.paused) return;
 
@@ -134,6 +134,7 @@ export class Interpreter {
   }
 
   stop(){
+    this.isRunning = false;  // ★ 実行中フラグOFF
     if (this.timer){
       clearTimeout(this.timer);
       this.timer = null;

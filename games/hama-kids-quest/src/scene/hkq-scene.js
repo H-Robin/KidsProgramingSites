@@ -473,13 +473,20 @@ playCutsceneThen(next, overridePath) {
     this.fieldLayer?.destroy(true);
     this.fieldLayer = this.add.container(x0, y0);
 
+   // --- サブレイヤー分割（床/ゴール用と役者用） ---
+    this.groundLayer?.destroy(true);
+    this.actorLayer?.destroy(true);
+    this.groundLayer = this.add.container(0, 0);
+    this.actorLayer  = this.add.container(0, 0);
+    this.fieldLayer.add(this.groundLayer); // 奥：床・ゴール
+    this.fieldLayer.add(this.actorLayer);  // 手前：ロボ・敵・アイテム
+
     this._baseIsoX = (this.gridH - 1) * (fIsoW / 2);
 
     const tiles = buildTileLayer(this, this.gridW, this.gridH, fIsoW, fIsoH, 'floor_moon', {
       gap: 2, lineColor: 0x44506b, lineAlpha: 1, baseIsoX: this._baseIsoX
     });
-    this.fieldLayer.add(tiles);
-
+    this.groundLayer.add(tiles);
     if (window.clearRunnerQueue) window.clearRunnerQueue();
 
     // ゴール位置：level.goal を優先。なければ spec に従う
@@ -503,7 +510,8 @@ playCutsceneThen(next, overridePath) {
           .setOrigin(0.5, 1)
           .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
           .setDepth(5);
-        this.fieldLayer.add(this.goalSpr);
+        this.groundLayer.add(this.goalSpr);
+        
       });
       this.load.start();
     } else {
@@ -511,16 +519,18 @@ playCutsceneThen(next, overridePath) {
         .setOrigin(0.5, 1)
         .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
         .setDepth(5);
-      this.fieldLayer.add(this.goalSpr);
+      this.groundLayer.add(this.goalSpr);
+
     }
 
     // Robot sprite
     const spx = this.cellToXY(this.startCell.x, this.startCell.y);
     this.robotSpr?.destroy();
     this.robotSpr = this.add.sprite(this.snap(spx.x), this.snap(spx.y), 'robot_idle0')
-      .setOrigin(0.5, 1).setDisplaySize(Math.floor(isoW * 0.7), Math.floor(isoH * 1.2)).setDepth(10)
+      .setOrigin(0.5, 1).setDisplaySize(Math.floor(isoW * 0.7), Math.floor(isoH * 1.2)).setDepth(100)
       .play('robot_idle', true);
-    this.fieldLayer.add(this.robotSpr);
+    this.actorLayer.add(this.robotSpr);
+    this.fieldLayer.bringToTop(this.robotSpr); // Container 内でロボットを最前面に移動
 
     this.cellSize = cell;
     this.robotCell = { ...this.startCell };
@@ -590,7 +600,7 @@ playCutsceneThen(next, overridePath) {
         const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'blueprint_icon')
           .setOrigin(0.5, 1).setDepth(9)
           .setDisplaySize(Math.floor(this._isoW * 0.75), Math.floor(this._isoH * 0.85));
-        this.fieldLayer.add(spr);
+        this.actorLayer.add(spr);
         this.blueprints.push({ cell, spr });
       }
     }
@@ -623,7 +633,7 @@ playCutsceneThen(next, overridePath) {
           .setOrigin(0.5, 1).setDepth(8)
           .setDisplaySize(Math.floor(this._isoW * 1.2), Math.floor(this._isoH * 1.6))
           .play('monsterA_idle', true);
-        this.fieldLayer.add(spr);
+        this.actorLayer.add(spr);
         (this.monsters || (this.monsters = [])).push({ type, cell, spr });
       }
       
@@ -899,21 +909,21 @@ playCutsceneThen(next, overridePath) {
             progress: { reachedGoal: true }
           });
           console.log("【DEBUG】evaluate result:", result);
-          if (result.done) {
-            // 成功カットシーン
-            document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
-            this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
-          } else {
-            // 失敗カットシーン
-            this.robotSpr.play('robot_sad', true);
-            if (pathFail) {
-              this.playFailCutscene(pathFail, () => {
-                this.scene.restart({ missionIndex: this.missionIndex });
-              });
-            } else {
+        if (result.done) {
+          // 成功カットシーン
+          document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
+          this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
+        } else {
+          // 失敗カットシーン
+          this.robotSpr.play('robot_sad', true);
+          if (pathFail) {
+            this.playFailCutscene(pathFail, () => {
               this.scene.restart({ missionIndex: this.missionIndex });
-            }
+            });
+          } else {
+            this.scene.restart({ missionIndex: this.missionIndex });
           }
+        }
           return;
         }
         // 5) 通常

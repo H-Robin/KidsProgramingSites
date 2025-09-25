@@ -112,10 +112,7 @@ window.currentRunner = interp;
 /**
  * window.clearRunnerQueue()
  * 処理概要:
- *  - 現 Runner の stop() / タイマー解除
- *  - Runner 内部状態の初期化（isRunning / currentCommand / commandQueue）
- *  - UI 初期化（programList を空に / 残数バー更新）
- *  - newRunner() で新 Runner を生成（＝世代番号が進むので旧 tick は黙殺）
+ * Runner停止＋UIリセット＋新Runner生成
  */
 window.clearRunnerQueue = function () {
   const r = window.currentRunner;
@@ -132,12 +129,13 @@ window.clearRunnerQueue = function () {
     window.HKQ_CMD_LIMIT?.refreshCapUI?.();
   } catch (_) {}
 
-  // ★ くり返し録画状態を必ず解除（DOMクラスも外す）
+  // くり返し録画状態を解除
   try {
     recordingRepeat = null;
     programList.classList.remove("recording-repeat");
   } catch (_) {}
-  // 新世代の Runner に置き換え（古い tick は世代不一致で無効化）
+
+  // 新Runnerに差し替え
   window.currentRunner = newRunner(programList);
 };
 
@@ -478,4 +476,39 @@ document.addEventListener("hkq:unlock", () => document.body.classList.remove("ui
     const saved = (localStorage.getItem(LS_KEY) ?? '1') === '1';
     apply(saved);
   });
+})();
+
+/* =========================
+   Runner 自然停止検知
+   - ゴール成功直後は除外
+   - それ以外で停止したらコマンドをクリア
+   ========================= */
+let HKQ_LAST_GOAL_TS = 0;
+document.addEventListener("hkq:reach-goal", () => {
+  HKQ_LAST_GOAL_TS = Date.now();
+  console.log("【DEBUG】hkq:reach-goal event → ゴール成功マーク");
+});
+
+(function watchRunnerIdleAndClear() {
+  console.log("【DEBUG】watchRunnerIdleAndClear IIFE 呼ばれました"); // ← IIFE実行確認ログ
+
+  let prevRunning = false;
+  setInterval(() => {
+    const r = window.currentRunner;
+    const running = !!(r && r.isRunning);
+
+    // Runner の状態を毎回確認
+    //console.log("【DEBUG】runner check:", { prevRunning, running, runner: r });
+
+    if (prevRunning && !running) {
+      const justCleared = (Date.now() - HKQ_LAST_GOAL_TS) < 800;
+      if (!justCleared) {
+        console.log("【DEBUG】自然停止検知 → clearRunnerQueue()");
+        window.clearRunnerQueue?.();
+      } else {
+        console.log("【DEBUG】ゴール成功直後の停止 → スキップ");
+      }
+    }
+    prevRunning = running;
+  }, 150);
 })();
