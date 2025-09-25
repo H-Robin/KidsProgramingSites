@@ -134,14 +134,30 @@ export class HkqScene extends Phaser.Scene {
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
 
-  // 追加：レベルJSONからカットシーン画像パスを取るヘルパ
-  getCutscenePath(id){
-    const v = this.level?.[id];
-    if (v && typeof v.image === 'string' && v.image) return v.image;
-    if (!id && this.level?.cutscene?.image) return this.level.cutscene.image; // 旧仕様フォールバック
-    return null;
+  // 条件1件を見つける
+  getCondition(predicate) {
+    const list = this.getConditionsList();
+    return Array.isArray(list) ? (list.find(predicate) || null) : null;
   }
 
+  // 条件の cutscene パスを取る（success/fail）
+  getCondCutscene(cond, resultType) {
+    return cond?.cutscenes?.[resultType] || null;
+  }
+
+  // カテゴリ（battle/goal 等）デフォルトを取る（success/fail）
+  getDefaultCutscene(category, resultType) {
+    return this.level?.defaults?.cutscenes?.[category]?.[resultType] || null;
+  }
+  // レベル内の conditions を合算（トップ/clear 両方を見る）
+  getConditionsList() {
+    const list = [];
+    const a = this.level?.conditions;
+    if (Array.isArray(a)) list.push(...a);
+    const b = this.level?.clear?.conditions;
+    if (Array.isArray(b)) list.push(...b);
+    return list;
+  }
   /**
    * playCutsceneThen(next)
    * 処理概要:
@@ -149,13 +165,12 @@ export class HkqScene extends Phaser.Scene {
    *  - 再生中は lock、終了時に unlock → next() を呼ぶ
    * @param {Function} next - 再生完了後のコールバック
    */
+// 新: 第2引数 overridePath でパス上書き可
 playCutsceneThen(next, overridePath) {
   const imgPath = overridePath || this.level?.cutscene?.image || null;
   if (!imgPath) { next?.(); return; }
 
-  // パス基準でテクスチャキーを作る（同名レベル間での競合回避）
   const texKey = `cutscene:${imgPath}`;
-
   const startShow = () => {
     const cam = this.cameras.main;
     const cx = cam.worldView.centerX ?? cam.centerX;
@@ -191,15 +206,9 @@ playCutsceneThen(next, overridePath) {
     });
   };
 
-  if (this.textures.exists(texKey)) {
-    startShow();
-  } else {
-    this.load.once('complete', startShow);
-    this.load.image(texKey, imgPath);
-    this.load.start();
-  }
+  if (this.textures.exists(texKey)) startShow();
+  else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
 }
-
   /**
    * playMidCutscene(path, next)
    * 処理概要:
@@ -748,26 +757,44 @@ playCutsceneThen(next, overridePath) {
         // 2) 敵
         const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
         if (enemy) {
+          const condGetKey = this.getCondition(c => c.id === 'get_key'); // 条件(敵→キー取得)
           if (this.inventory.weapon) {
-            // 途中演出 → 撃破（※ 自動キー付与は面にキーが無いときのみ）
-            this.playMidCutscene('assets/cutscene/monster_battle.png', () => {
+            // success: 条件→(無ければ)defaults.battle.success
+            const path = this.getCondCutscene(condGetKey, 'success')
+                      || this.getDefaultCutscene('battle', 'success');
+            if (path) {
+              this.playMidCutscene(path, () => {
+                try { enemy.spr.destroy(); } catch(_) {}
+                this.monsters = this.monsters.filter(m => m !== enemy);
+                document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail: { type: 'monster-a' } }));
+
+                if (!this.inventory.key && !this._hasKeyPickup) {
+                  this.inventory.key = true;
+                  this.renderItemBox();
+                  document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
+                }
+                this.robotSpr.play('robot_idle', true);
+                document.dispatchEvent(new CustomEvent('hkq:tick'));
+              });
+            } else {
+              // 画像自体が未設定なら、演出スキップで処理だけ行う
               try { enemy.spr.destroy(); } catch(_) {}
               this.monsters = this.monsters.filter(m => m !== enemy);
-              document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail: { type: 'monster-a' } }));
-              if (!this.inventory.key && !this._hasKeyPickup) {
-                this.inventory.key = true;
-                this.renderItemBox();
-                document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
-              }
-              this.robotSpr.play('robot_idle', true);
-              document.dispatchEvent(new CustomEvent('hkq:tick'));
-            });
+              // …(同上の後処理)…
+            }
             return;
+
           } else {
-            // 武器なし → 失敗
-            this.playFailCutscene('assets/cutscene/mission-failed1.png', () => {
+            // fail: 条件→(無ければ)defaults.battle.fail
+            const path = this.getCondCutscene(condGetKey, 'fail')
+                      || this.getDefaultCutscene('battle', 'fail');
+            if (path) {
+              this.playFailCutscene(path, () => {
+                this.scene.restart({ missionIndex: this.missionIndex });
+              });
+            } else {
               this.scene.restart({ missionIndex: this.missionIndex });
-            });
+            }
             return;
           }
         }
@@ -783,27 +810,31 @@ playCutsceneThen(next, overridePath) {
 
         // 4) ゴール到達（鍵チェック）
         if (this.isAtGoal()) {
+          const condReach = this.getCondition(c => c.id === 'reach_goal'); // 条件(基地到達)
+
           if (this.inventory.key) {
-            // 成功: JSON "goal-success.image" を最優先、無ければ旧 "cutscene.image"
-            const okPath =
-              this.level?.['goal-success']?.image ||
-              this.level?.cutscene?.image ||
-              null;
+            // success: 条件→(無ければ)defaults.goal.success→(無ければ)旧 cutscene.image
+            const path = this.getCondCutscene(condReach, 'success')
+                      || this.getDefaultCutscene('goal', 'success')
+                      || this.level?.cutscene?.image || null;
 
             document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
-            // ← 第2引数で成功用の画像パスを渡す
-            this.playCutsceneThen(() => this.handleGoalReached(), okPath);
+            this.playCutsceneThen(() => this.handleGoalReached(), path);
             return;
+
           } else {
-            // 失敗: JSON "goal-failed.image" を最優先、無ければ従来の固定画像
-            const ngPath =
-              this.level?.['goal-failed']?.image ||
-              'assets/cutscene/mission-failed2.png'; // ※ ".png.png" ではなく ".png"
+            // fail: 条件→(無ければ)defaults.goal.fail
+            const path = this.getCondCutscene(condReach, 'fail')
+                      || this.getDefaultCutscene('goal', 'fail');
 
             this.robotSpr.play('robot_sad', true);
-            this.playFailCutscene(ngPath, () => {
+            if (path) {
+              this.playFailCutscene(path, () => {
+                this.scene.restart({ missionIndex: this.missionIndex });
+              });
+            } else {
               this.scene.restart({ missionIndex: this.missionIndex });
-            });
+            }
             return;
           }
         }
