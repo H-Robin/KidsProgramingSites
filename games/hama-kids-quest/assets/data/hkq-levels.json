@@ -1,5 +1,41 @@
 [
   {
+    "id": "B1 設計図をあつめて建設予定地へ",
+    "gridW": 5,
+    "gridH": 4,
+    "uniformH": 0,
+    "robot": { "x": 0, "y": 3, "dir": 1 },
+    "goalSpec": { "pattern": "line", "count": 1, "minDistance": 4 },
+    "goalIcon": "assets/floor/planedsite_goal.png",
+    "enemies": [],
+    "pickups": [{ "type": "blueprint", "count": 3 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "collect_blueprints",
+          "type": "obtain",
+          "item": "blueprint",
+          "count": 3,
+          "text": "設計図を3枚あつめる",
+          "cutscenes": { "success": "assets/cutscene/get_blueprints.png" }
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "planed_erea",
+          "text": "建設予定地（ゴール）へ向かう",
+          "cutscenes": {
+            "success": "assets/cutscene/build-lab.png",
+            "fail":    "assets/cutscene/build_failed.png"
+          }
+        }
+      ]
+    },
+    "cmdCap": 8,
+    "repeatInnerCap": 3
+  },
+  {
     "id": "T1-方向コマンドの使い方",
     "gridW": 1,
     "gridH": 4,
@@ -7,6 +43,7 @@
     "robot": { "x": 0, "y": 3, "dir": 2 },
     "goal":  { "x": 0, "y": 0 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 3 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -36,6 +73,7 @@
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goal":  { "x": 0, "y": 4 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 4 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -65,6 +103,7 @@
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goal":  { "x": 5, "y": 0 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 0},
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -93,6 +132,7 @@
     "uniformH": 0,
     "robot": { "x": 4, "y": 0, "dir": 1 },
     "goal":  { "x": 0, "y": 0 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -122,6 +162,7 @@
     "robot": { "x": 0, "y": 3, "dir": 2 },
     "goal":  { "x": 0, "y": 0 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 3 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -150,6 +191,7 @@
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goal":  { "x": 0, "y": 4 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 4 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -179,6 +221,7 @@
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goal":  { "x": 5, "y": 0 },
     "goalSpec": { "pattern": "line", "count": 1, "minDistance": 0},
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -206,6 +249,7 @@
     "uniformH": 0,
     "robot": { "x": 4, "y": 0, "dir": 1 },
     "goal":  { "x": 0, "y": 0 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [],
     "pickups": [{ "type": "key", "count": 1 }],
     "clear": {
@@ -233,6 +277,7 @@
     "uniformH": 0,
     "robot": { "x": 0, "y": 2, "dir": 1 },
     "goalSpec": { "pattern": "line", "count": 3, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 1 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
@@ -272,6 +317,7 @@
     "uniformH": 1,
     "robot": { "x": 0, "y": 0, "dir": 1 },
     "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 1 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
@@ -313,6 +359,7 @@
     "uniformH": 2,
     "robot": { "x": 3, "y": 3, "dir": 0 },
     "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 1 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
@@ -352,6 +399,7 @@
     "uniformH": 3,
     "robot": { "x": 1, "y": 5, "dir": 1 },
     "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 4 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 1 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
@@ -391,6 +439,7 @@
     "uniformH": 4,
     "robot": { "x": 3, "y": 2, "dir": 2 },
     "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 2 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {
@@ -430,6 +479,7 @@
     "uniformH": 4,
     "robot": { "x": 3, "y": 2, "dir": 2 },
     "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
     "enemies": [{ "type": "monster-a", "count": 2 }],
     "pickups": [{ "type": "weapon", "count": 1 }],
     "clear": {

@@ -4,7 +4,9 @@ export const MISSION_ICON_MAP = {
   "モンスター":   "assets/enemy/monster-a/idle/idle1.png",
   "ゲートカード": "assets/items/gatecard.png",
   "ゴール":       "assets/floor/moon_base_goal.png",
+  "建設予定地":    "assets/floor/planedsite_goal.png",
   "ブラスターガン":"assets/weapon/blaster-a.png",
+  "設計図":"assets/items/blueprint1.png",
 };
 /** アイコン登録（既存キー上書き可） */
 export function registerMissionIcon(key, path){ MISSION_ICON_MAP[key] = path; }
@@ -61,22 +63,48 @@ export class Mission {
   }
 
   _has(k){ const v=this.progress.inventory[k]; return typeof v==='number'? v>0: !!v; }
-  _ok(c){
-    if (c.requires && !c.requires.every(k=>this._has(k))) return false;
-    switch(c.type){
-      case 'obtain': return (this.progress.inventory[c.item]||0) >= (c.count||1);
-      case 'defeat': return (this.progress.stats.defeated[c.enemy]||0) >= (c.count||1);
-      case 'reach' : return c.target==='lunar_base' ? this.progress.reachedGoal : false;
-      default: return false;
+  _ok(c, ctx) {
+    switch (c.type) {
+      case 'obtain': {
+        const have = Number(ctx.inventory?.[c.item] || 0);
+        const need = Number(c.count || 0);
+        console.log(`【DEBUG】obtain check: item=${c.item}, have=${have}, need=${need}`);
+        return have >= need;
+      }
+      case 'reach': {
+        console.log(`【DEBUG】reach check: target=${c.target}, reachedGoal=${ctx.reachedGoal}`);
+        return !!ctx.reachedGoal;
+      }
+      default:
+        console.log("【DEBUG】unknown condition:", c);
+        return false;
     }
   }
-  evaluate(){
+
+  evaluate(ctx = {}) {
+    //console.log("【DEBUG】Mission.evaluate called with ctx:", ctx);
+    // ctx から inventory と reachedGoal を受け取る
+    const evalCtx = {
+      inventory: ctx.inventory || {},
+      reachedGoal: !!(ctx.progress && ctx.progress.reachedGoal)
+    };
+
     const cs = this.level.clear?.conditions || [];
-    const results = cs.map(c => ({ id:c.id, ok:this._ok(c), text:c.text }));
-    const done = (this.level.clear?.logic === 'AND')
-      ? results.every(r=>r.ok) : results.some(r=>r.ok);
+    const results = cs.map(c => {
+      const ok = this._ok(c, evalCtx);
+      console.log(`【DEBUG】condition id=${c.id}, type=${c.type}, ok=${ok}`);
+      return { id: c.id, ok, text: c.text };
+    });
+
+    const logic = (this.level.clear?.logic || 'AND').toUpperCase();
+    const done = (logic === 'AND')
+      ? results.every(r => r.ok)
+      : results.some(r => r.ok);
+
+    console.log("【DEBUG】evaluate results:", results, "logic:", logic, "done:", done);
     return { done, results };
   }
+
   render(fireClear=false){
     const el = document.getElementById('mission-clear-text');
     if (!el) return;
@@ -163,7 +191,15 @@ export class Mission {
       const haveW = (this.progress.inventory.weapon|0) > 0;
       lines.push({ key:'ブラスターガン', label:'ブラスターガン', meta: haveW ? '所持' : '未所持' });
     }
-
+    // 設計図（blueprint）
+    const bpDef = (Array.isArray(L.pickups)? L.pickups.find(p=>p.type==='blueprint'):null);
+    if (bpDef && (bpDef.count|0) > 0) {
+      const have = this.progress.inventory.blueprint|0;
+      lines.push({
+        key:'設計図', label:'設計図',
+        meta: `取得 ${have}/${bpDef.count}`
+      });
+    }
     // ゴール
     lines.push({ key:'ゴール', label:'ゴール', meta: this.progress.reachedGoal ? '到達' : '未到達' });
 

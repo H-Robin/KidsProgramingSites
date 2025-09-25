@@ -2,6 +2,7 @@
 import { isoX, isoY, fieldSize } from '../render/iso-math.js';
 import { buildTileLayer } from '../render/tilemap-renderer.js';
 import { loadLevels, pickGoalFromSpec } from '../data/level-loader.js';
+import { Mission } from './hkq-mission.js'; 
 
 const ISO_ARROW = {
   up: 'arrow-nw',   // ↖︎
@@ -130,7 +131,10 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('arrow-sw', 'assets/direction/arrow-sw.png');
 
     this.load.image('bg_moon', 'assets/wallpaper/moon.png');
-  }
+    // 設計図アイコン（新規）
+    this.load.image('blueprint_icon', 'assets/items/blueprint1.png');
+    this.load.image('planned_goal', 'assets/floor/planedsite_goal.png');
+    }
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
 
@@ -488,9 +492,27 @@ playCutsceneThen(next, overridePath) {
     // Goal sprite
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
     this.goalSpr?.destroy();
-    this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), 'goal_png')
-      .setOrigin(0.5, 1).setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4)).setDepth(5);
-    this.fieldLayer.add(this.goalSpr);
+
+    const goalKey = this.level.goalIcon;
+    const texKey = `goal:${goalKey}`;
+
+    if (!this.textures.exists(texKey)) {
+      this.load.image(texKey, goalKey);
+      this.load.once('complete', () => {
+        this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), texKey)
+          .setOrigin(0.5, 1)
+          .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
+          .setDepth(5);
+        this.fieldLayer.add(this.goalSpr);
+      });
+      this.load.start();
+    } else {
+      this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), texKey)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
+        .setDepth(5);
+      this.fieldLayer.add(this.goalSpr);
+    }
 
     // Robot sprite
     const spx = this.cellToXY(this.startCell.x, this.startCell.y);
@@ -553,6 +575,27 @@ playCutsceneThen(next, overridePath) {
       }
     }
 
+    // --- BLUEPRINTS (設計図) ここから -------------
+    const bpDef = (Array.isArray(L.pickups) ? L.pickups : []).find(p => p.type === 'blueprint');
+    this.blueprints = [];                 // [{cell:{x,y}, spr:Phaser.GameObjects.Sprite}]
+    this.blueprintTotal = 0;
+
+    // 既存の占有セル集合 occupied を流用
+    if (bpDef && (bpDef.count|0) > 0) {
+      this.blueprintTotal = bpDef.count|0;
+      for (let i = 0; i < this.blueprintTotal; i++) {
+        const cell = this.pickFreeCell(occupied);
+        if (!cell) break;
+        const pos = this.cellToXY(cell.x, cell.y);
+        const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'blueprint_icon')
+          .setOrigin(0.5, 1).setDepth(9)
+          .setDisplaySize(Math.floor(this._isoW * 0.75), Math.floor(this._isoH * 0.85));
+        this.fieldLayer.add(spr);
+        this.blueprints.push({ cell, spr });
+      }
+    }
+    // --- BLUEPRINTS ここまで -------------
+
     // 敵配置
     const enemyDefs = Array.isArray(L.enemies) ? L.enemies : [];
     const pickFreeCell = () => {
@@ -583,6 +626,7 @@ playCutsceneThen(next, overridePath) {
         this.fieldLayer.add(spr);
         (this.monsters || (this.monsters = [])).push({ type, cell, spr });
       }
+      
     });
 
     // クリア条件UI更新
@@ -608,9 +652,14 @@ playCutsceneThen(next, overridePath) {
     }
 
     // インベントリ初期化
-    this.inventory = { weapon: false, key: false };
+    this.inventory =  { weapon: false, key: false, blueprint: 0 };
+    this.inventory.blueprint = 0;
+    // buildLevel() の末尾あたり
+    this.mission = new Mission(this.level);
+
     this.renderItemBox();
     this.updateBackground();
+
   }
 
   /**
@@ -783,7 +832,6 @@ playCutsceneThen(next, overridePath) {
               // …(同上の後処理)…
             }
             return;
-
           } else {
             // fail: 条件→(無ければ)defaults.battle.fail
             const path = this.getCondCutscene(condGetKey, 'fail')
@@ -798,7 +846,33 @@ playCutsceneThen(next, overridePath) {
             return;
           }
         }
+        // 2.5) 設計図（踏んだら取得）
+        if (this.blueprints?.length) {
+          const hitIndex = this.blueprints.findIndex(b => b.cell.x === cx && b.cell.y === cy);
+          if (hitIndex >= 0) {
+            try { this.blueprints[hitIndex].spr.destroy(); } catch(_) {}
+            this.blueprints.splice(hitIndex, 1);
+            this.inventory.blueprint = Math.min(
+              (this.inventory.blueprint|0) + 1,
+              this.blueprintTotal|0
+            );
+            document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'blueprint' } }));
 
+            // 3枚達成時：条件の success カットシーンを再生（任意）
+            if ((this.inventory.blueprint|0) >= (this.blueprintTotal|0) && this.blueprintTotal > 0) {
+              const condBP = this.getCondition(c => c.id === 'collect_blueprints');
+              const pathBP = this.getCondCutscene(condBP, 'success'); // JSONの cutscenes.success
+              if (pathBP) {
+                this.playMidCutscene(pathBP, () => {
+                  // カットシーン後、通常進行に戻す
+                  this.robotSpr.play('robot_idle', true);
+                  document.dispatchEvent(new CustomEvent('hkq:tick'));
+                });
+                return; // ここで一旦止める（演出を優先）
+              }
+            }
+          }
+        }
         // 3) カードキー
         if (this.keyCell && cx === this.keyCell.x && cy === this.keyCell.y && !this.inventory.key) {
           this.inventory.key = true;
@@ -810,35 +884,38 @@ playCutsceneThen(next, overridePath) {
 
         // 4) ゴール到達（鍵チェック）
         if (this.isAtGoal()) {
-          const condReach = this.getCondition(c => c.id === 'reach_goal'); // 条件(基地到達)
+          const condReach = this.getCondition(c => c.id === 'reach_goal');
 
-          if (this.inventory.key) {
-            // success: 条件→(無ければ)defaults.goal.success→(無ければ)旧 cutscene.image
-            const path = this.getCondCutscene(condReach, 'success')
-                      || this.getDefaultCutscene('goal', 'success')
-                      || this.level?.cutscene?.image || null;
+          const pathSuccess = this.getCondCutscene(condReach, 'success')
+                                || this.getDefaultCutscene('goal', 'success')
+                                || this.level?.cutscene?.image || null;
 
+          const pathFail = this.getCondCutscene(condReach, 'fail')
+                              || this.getDefaultCutscene('goal', 'fail');
+
+          // ★ ここで reachedGoal:true を渡すのが重要
+          const result = this.mission.evaluate({
+            inventory: this.inventory,
+            progress: { reachedGoal: true }
+          });
+          console.log("【DEBUG】evaluate result:", result);
+          if (result.done) {
+            // 成功カットシーン
             document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
-            this.playCutsceneThen(() => this.handleGoalReached(), path);
-            return;
-
+            this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
           } else {
-            // fail: 条件→(無ければ)defaults.goal.fail
-            const path = this.getCondCutscene(condReach, 'fail')
-                      || this.getDefaultCutscene('goal', 'fail');
-
+            // 失敗カットシーン
             this.robotSpr.play('robot_sad', true);
-            if (path) {
-              this.playFailCutscene(path, () => {
+            if (pathFail) {
+              this.playFailCutscene(pathFail, () => {
                 this.scene.restart({ missionIndex: this.missionIndex });
               });
             } else {
               this.scene.restart({ missionIndex: this.missionIndex });
             }
-            return;
           }
+          return;
         }
-
         // 5) 通常
         this.robotSpr.play('robot_idle', true);
         document.dispatchEvent(new CustomEvent('hkq:tick'));
@@ -877,7 +954,25 @@ playCutsceneThen(next, overridePath) {
       slots[1].classList.add('on');
       slots[1].innerHTML = `<img src="assets/items/gatecard.png" alt="key" style="width:90%;height:auto;">`;
     }
+    if (slots[2]) {
+    const got = this.inventory.blueprint|0;
+      if (got > 0) {
+        slots[2].classList.add('on');
+        slots[2].innerHTML = `<img src="assets/items/blueprint1.png" alt="blueprint" style="width:90%;height:auto;"><div class="count">${got}</div>`;
+      }
+    } 
+    /*
+    // renderItemBox() の末尾に追記（ラベルだけ）
+    const info = document.getElementById('mission-clear-text'); // 既存の説明欄を流用
+    if (info && (this.blueprintTotal|0) > 0) {
+      const got = this.inventory.blueprint|0;
+      const line = `<div class="cc-item"><span class="cc-text">設計図：${got}/${this.blueprintTotal}</span></div>`;
+      info.insertAdjacentHTML('beforeend', line);
+    }
+    */
+ 
   }
+
 
   /**
    * updateBackground()
