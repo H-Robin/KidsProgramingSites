@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>月面マップ</title>
+  <link rel="stylesheet" href="./hkq-map.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1 class="title">Lunar Map</h1>
+    <section id="grid" class="grid"
+      aria-label="3x3 lunar map, columns A–C, rows 1–3">
+      <!-- A列 -->
+      <button class="cell" data-col="A" data-row="1" data-tile="moonland"    aria-label="A-1 moonland"></button>
+      <button class="cell" data-col="A" data-row="2" data-tile="moonland"    aria-label="A-2 moonland"></button>
+      <button class="cell" data-col="A" data-row="3" data-tile="moon-alien"  aria-label="A-3 moon-alien"></button>
+      <!-- B列 -->
+      <button class="cell" data-col="B" data-row="1" data-tile="moonland" aria-label="B-1 moonland"></button>
+      <button class="cell" data-col="B" data-row="2" data-tile="moon-base"   aria-label="B-2 moon-base"></button>
+      <button class="cell" data-col="B" data-row="3" data-tile="moonland"    aria-label="B-3 moonland"></button>
+      <!-- C列 -->
+      <button class="cell" data-col="C" data-row="1" data-tile="moonland"    aria-label="C-1 moonland"></button>
+      <button class="cell" data-col="C" data-row="2" data-tile="planed-area"    aria-label="C-2 planed-area"></button>
+      <button class="cell" data-col="C" data-row="3" data-tile="moonland"    aria-label="C-3 moonland"></button>
+    </section>
+    <p class="hint">マスにカーソルをのせると枠が点滅します。クリックでミッション開始。</p>
+  </main>
+  <script src="../src/scene/hkq-map.js"></script>
+</body>
+</html>

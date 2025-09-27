@@ -5,9 +5,43 @@
   gap: 1rem;
 }
 
-.card-text {
-  flex: 1 1 60%;
+header {
+  font-family: 'Baloo 2', 'M PLUS Rounded 1c', 'Poppins', system-ui, sans-serif;
+  font-size: clamp(2rem, 6vw, 3.5rem); /* ← 最大を3.5remまで大きく */
+  font-weight: 700;
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+
+  /* 明るめポップなグラデーション文字 */
+  background: linear-gradient(90deg, #f16f73, #ff9d82, #a1c4fd, #c2e9fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  /* カラフルに光る影 */
+  text-shadow:
+    0 0 6px rgba(255, 182, 193, 0.8),  /* ピンク */
+    0 0 12px rgba(135, 206, 250, 0.7), /* 水色 */
+    0 0 18px rgba(255, 255, 150, 0.6); /* 黄色でさらにポップ */
 }
+
+
+/* ===== Card タイトルをロゴ風に ===== */
+.card-text h3 {
+  font-size: clamp(1.0rem, 2.0vw, 1.4rem); /* ← 少し小さめに */
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: #fff;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.8),
+               0 0 12px rgba(0, 200, 255, 0.6),
+               2px 2px 6px #0b1020;
+  background: #0b1020;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-block;
+  white-space: nowrap; /* 改行禁止で1行に収める */
+}
+
 
 .card-image {
   flex: 1 1 40%;
@@ -15,11 +49,11 @@
 }
 
 .card-image img {
-  max-width: 300px;   /* 画像の最大幅を制限 */
+  max-width: 500px;   /* 画像の最大幅を制限 */
   height: auto;
   object-fit: cover;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  box-shadow: 0 4px 12px #0b1020;
 }
 
 /* スマホ対応 */
@@ -31,4 +65,97 @@
     order: -1; /* 画像を上にする */
     width: 100%;
   }
+}
+/* ===== Neon Cyber Button ===== */
+:root{
+  --neon-cyan: #22d3ee;
+  --neon-blue: #60a5fa;
+  --neon-pink: #f472b6;
+  --btn-bg: #0b1220;
+  --btn-text: #e6f0ff;
+}
+
+/* idle時：枠がゆっくり点滅（パルス） */
+@keyframes neonPulse {
+  0%   { box-shadow: 0 0 0 rgba(34,211,238,0.0), inset 0 0 0 rgba(34,211,238,0.0); }
+  50%  { box-shadow: 0 0 14px rgba(34,211,238,0.45), inset 0 0 8px rgba(96,165,250,0.35); }
+  100% { box-shadow: 0 0 0 rgba(34,211,238,0.0), inset 0 0 0 rgba(34,211,238,0.0); }
+}
+
+/* ベース */
+.card .btn{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--neon-cyan);
+  background: linear-gradient(180deg, rgba(11,18,32,.75), rgba(11,18,32,.55));
+  color: var(--btn-text);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: .02em;
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  cursor: pointer;
+
+  /* idleのゆっくり点滅 */
+  animation: neonPulse 2.4s ease-in-out infinite;
+}
+
+/* 外側の“にじむグロー”リング */
+.card .btn::after{
+  content:"";
+  position:absolute; inset:-6px;
+  border-radius: 14px;
+  pointer-events:none;
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgba(34,211,238,.18), transparent 60%),
+    radial-gradient(60% 60% at 40% 30%, rgba(96,165,250,.15), transparent 65%);
+  filter: blur(6px);
+  opacity:.7;
+  transition: opacity .2s ease, filter .2s ease;
+}
+
+/* hover時：ネオンが強く光る */
+.card .btn:hover{
+  border-color: var(--neon-blue);
+  background: linear-gradient(180deg, rgba(15,30,55,.9), rgba(10,20,40,.7));
+  box-shadow:
+    0 0 18px rgba(96,165,250,.65),
+    0 0 28px rgba(34,211,238,.55),
+    inset 0 0 10px rgba(34,211,238,.25);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* hover時のグローをさらに増幅 */
+.card .btn:hover::after{
+  opacity:1;
+  filter: blur(8px);
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgba(34,211,238,.30), transparent 60%),
+    radial-gradient(60% 60% at 45% 35%, rgba(244,114,182,.22), transparent 65%);
+}
+
+/* クリック時の押し感 */
+.card .btn:active{
+  transform: translateY(1px) scale(.98);
+  box-shadow:
+    0 0 10px rgba(96,165,250,.5),
+    inset 0 0 12px rgba(34,211,238,.35);
+}
+
+/* キーボード操作のアクセシビリティ */
+.card .btn:focus-visible{
+  outline: none;
+  border-color: var(--neon-pink);
+  box-shadow:
+    0 0 20px rgba(244,114,182,.6),
+    inset 0 0 10px rgba(244,114,182,.35);
+}
+
+/* ユーザーが“動きを減らす”設定の場合はアニメ停止 */
+@media (prefers-reduced-motion: reduce){
+  .card .btn{ animation: none; }
 }

@@ -1,6 +1,6 @@
 [
   {
-    "id": "T1-方向コマンドの使い方",
+    "id": "T1-1-方向コマンドの使い方",
     "gridW": 1,
     "gridH": 4,
     "uniformH": 0,
@@ -30,7 +30,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "T2-方向コマンドの使い方",
+    "id": "T1-2-方向コマンドの使い方",
     "gridW": 1,
     "gridH": 5,
     "uniformH": 0,
@@ -60,7 +60,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "T3 方向コマンドの使い方",
+    "id": "T1-3 方向コマンドの使い方",
     "gridW": 6,
     "gridH": 1,
     "uniformH": 0,
@@ -90,7 +90,7 @@
     "repeatInnerCap": 3 
   },  
   {
-    "id": "T4 方向コマンドの使い方",
+    "id": "T1-4 方向コマンドの使い方",
     "gridW": 5,
     "gridH": 1,
     "uniformH": 0,
@@ -119,7 +119,7 @@
     "repeatInnerCap": 3 
   },
  {
-    "id": "T5 くり返しコマンドを使う",
+    "id": "T2-1 くり返しコマンドを使う",
     "gridW": 1,
     "gridH": 4,
     "uniformH": 0,
@@ -148,7 +148,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "T6 くり返しコマンドを使う",
+    "id": "T2-2 くり返しコマンドを使う",
     "gridW": 1,
     "gridH": 5,
     "uniformH": 0,
@@ -178,7 +178,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "T7 くり返しコマンドを使う",
+    "id": "T2-3 くり返しコマンドを使う",
     "gridW": 6,
     "gridH": 1,
     "uniformH": 0,
@@ -207,7 +207,7 @@
     "repeatInnerCap": 3 
   },  
   {
-    "id": "T8 くり返しコマンドを使う",
+    "id": "T2-4 くり返しコマンドを使う",
     "gridW": 5,
     "gridH": 1,
     "uniformH": 0,
@@ -235,7 +235,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "M1 モンスターを倒す",
+    "id": "M1-1 モンスターを倒す",
     "gridW": 7,
     "gridH": 5,
     "uniformH": 0,
@@ -275,7 +275,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "M2　モンスターを倒す",
+    "id": "M1-2　モンスターを倒す",
     "gridW": 7,
     "gridH": 5,
     "uniformH": 1,
@@ -317,7 +317,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "M3　モンスターを倒す",
+    "id": "M1-3　モンスターを倒す",
     "gridW": 6,
     "gridH": 6,
     "uniformH": 2,
@@ -357,7 +357,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "M4　モンスターを倒す",
+    "id": "M1-4　モンスターを倒す",
     "gridW": 7,
     "gridH": 7,
     "uniformH": 3,
@@ -397,7 +397,7 @@
     "repeatInnerCap": 3 
   },
   {
-    "id": "M5　モンスターを倒す",
+    "id": "M1-5　モンスターを倒す",
     "gridW": 7,
     "gridH": 5,
     "uniformH": 4,
@@ -436,48 +436,8 @@
     "cmdCap": 8,
     "repeatInnerCap": 3 
   },
-    {
-    "id": "M5　モンスターを倒す",
-    "gridW": 7,
-    "gridH": 5,
-    "uniformH": 4,
-    "robot": { "x": 3, "y": 2, "dir": 2 },
-    "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
-    "goalIcon": "assets/floor/moon_base_goal.png",
-    "enemies": [{ "type": "monster-a", "count": 2 }],
-    "pickups": [{ "type": "weapon", "count": 1 }],
-    "clear": {
-      "logic": "AND",
-      "conditions": [
-        {
-          "id": "get_key",
-          "type": "obtain",
-          "item": "key",
-          "requires": ["weapon"],
-          "cutscenes": {
-            "success": "assets/cutscene/monster_battle.png",
-            "fail":    "assets/cutscene/mission-failed1.png"
-          },
-          "text": "ブラスターで宇宙人を倒してカードキーを入手"
-        },
-        {
-          "id": "reach_goal",
-          "type": "reach",
-          "target": "lunar_base",
-          "requires": ["key"],
-          "cutscenes": {
-            "success": "assets/cutscene/mission-success1.png",
-            "fail":    "assets/cutscene/mission-failed2.png"
-          },
-          "text": "カードキーを持って月面基地へ向かう"
-        }
-      ]
-    },
-    "cmdCap": 8,
-    "repeatInnerCap": 3 
-  },
-    {
-    "id": "B1 設計図をあつめて建設予定地へ",
+  {
+    "id": "B1-1 設計図をあつめて建設予定地へ",
     "gridW": 5,
     "gridH": 4,
     "uniformH": 0,

@@ -1,0 +1,204 @@
+[
+  {
+    "id": "M1-1 モンスターを倒す",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 0,
+    "robot": { "x": 0, "y": 2, "dir": 1 },
+    "goalSpec": { "pattern": "line", "count": 3, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
+    "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "requires": ["weapon"],
+          "cutscenes": {
+            "success": "assets/cutscene/monster_battle.png",
+            "fail":    "assets/cutscene/mission-failed1.png"
+          },
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "cutscenes": {
+            "success": "assets/cutscene/mission-success1.png",
+            "fail":    "assets/cutscene/mission-failed2.png"
+          },
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
+    },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
+  },
+  {
+    "id": "M1-2　モンスターを倒す",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 1,
+    "robot": { "x": 0, "y": 0, "dir": 1 },
+    "goalSpec": { "pattern": "zigzag", "count": 5, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
+    "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "requires": ["weapon"],
+          "cutscenes": {
+            "success": "assets/cutscene/monster_battle.png",
+            "fail":    "assets/cutscene/mission-failed1.png"
+          },
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "cutscenes": {
+            "success": "assets/cutscene/mission-success1.png",
+            "fail":    "assets/cutscene/mission-failed2.png"
+          },
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
+    },
+    "goal-success": { "image": "assets/cutscene/mission-success1.png" }, 
+    "goal-failed" : { "image": "assets/cutscene/mission-failed2.png" }, 
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
+  },
+  {
+    "id": "M1-3　モンスターを倒す",
+    "gridW": 6,
+    "gridH": 6,
+    "uniformH": 2,
+    "robot": { "x": 3, "y": 3, "dir": 0 },
+    "goalSpec": { "pattern": "perimeter", "count": 6, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
+    "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "requires": ["weapon"],
+          "cutscenes": {
+            "success": "assets/cutscene/monster_battle.png",
+            "fail":    "assets/cutscene/mission-failed1.png"
+          },
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "cutscenes": {
+            "success": "assets/cutscene/mission-success1.png",
+            "fail":    "assets/cutscene/mission-failed2.png"
+          },
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
+    },
+    "cmdCap": 6,
+    "repeatInnerCap": 3 
+  },
+  {
+    "id": "M1-4　モンスターを倒す",
+    "gridW": 7,
+    "gridH": 7,
+    "uniformH": 3,
+    "robot": { "x": 1, "y": 5, "dir": 1 },
+    "goalSpec": { "pattern": "diagonal", "count": 4, "minDistance": 4 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
+    "enemies": [{ "type": "monster-a", "count": 1 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "requires": ["weapon"],
+          "cutscenes": {
+            "success": "assets/cutscene/monster_battle.png",
+            "fail":    "assets/cutscene/mission-failed1.png"
+          },
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "cutscenes": {
+            "success": "assets/cutscene/mission-success1.png",
+            "fail":    "assets/cutscene/mission-failed2.png"
+          },
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
+    },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
+  },
+  {
+    "id": "M1-5　モンスターを倒す",
+    "gridW": 7,
+    "gridH": 5,
+    "uniformH": 4,
+    "robot": { "x": 3, "y": 2, "dir": 2 },
+    "goalSpec": { "pattern": "random", "count": 5, "minDistance": 5 },
+    "goalIcon": "assets/floor/moon_base_goal.png",
+    "enemies": [{ "type": "monster-a", "count": 2 }],
+    "pickups": [{ "type": "weapon", "count": 1 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "get_key",
+          "type": "obtain",
+          "item": "key",
+          "requires": ["weapon"],
+          "cutscenes": {
+            "success": "assets/cutscene/monster_battle.png",
+            "fail":    "assets/cutscene/mission-failed1.png"
+          },
+          "text": "ブラスターで宇宙人を倒してカードキーを入手"
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "lunar_base",
+          "requires": ["key"],
+          "cutscenes": {
+            "success": "assets/cutscene/mission-success1.png",
+            "fail":    "assets/cutscene/mission-failed2.png"
+          },
+          "text": "カードキーを持って月面基地へ向かう"
+        }
+      ]
+    },
+    "cmdCap": 8,
+    "repeatInnerCap": 3 
+  }
+]

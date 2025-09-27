@@ -67,16 +67,30 @@ export class Mission {
     switch (c.type) {
       case 'obtain': {
         const have = Number(ctx.inventory?.[c.item] || 0);
-        const need = Number(c.count || 0);
-        console.log(`【DEBUG】obtain check: item=${c.item}, have=${have}, need=${need}`);
-        return have >= need;
+        const need = (c.count !== undefined) ? Number(c.count) : 1;
+
+        // requires がある場合、すべて所持していることを確認
+        if (Array.isArray(c.requires)) {
+          for (const req of c.requires) {
+            const reqHave = Number(ctx.inventory?.[req] || 0);
+            if (reqHave <= 0) {
+              console.log(`【DEBUG】obtain未達成: requires=${req} がない`);
+              return false;
+            }
+          }
+        }
+
+        const ok = have >= need;
+        console.log(`【DEBUG】obtain check: item=${c.item}, have=${have}, need=${need}, ok=${ok}`);
+        return ok;
       }
       case 'reach': {
         console.log(`【DEBUG】reach check: target=${c.target}, reachedGoal=${ctx.reachedGoal}`);
         return !!ctx.reachedGoal;
       }
+
       default:
-        console.log("【DEBUG】unknown condition:", c);
+      //  console.log("【DEBUG】unknown condition:", c);
         return false;
     }
   }
@@ -85,8 +99,8 @@ export class Mission {
     //console.log("【DEBUG】Mission.evaluate called with ctx:", ctx);
     // ctx から inventory と reachedGoal を受け取る
     const evalCtx = {
-      inventory: ctx.inventory || {},
-      reachedGoal: !!(ctx.progress && ctx.progress.reachedGoal)
+      inventory: ctx.inventory || this.progress.inventory || {},
+      reachedGoal: (ctx.progress?.reachedGoal) || this.progress.reachedGoal || false
     };
 
     const cs = this.level.clear?.conditions || [];

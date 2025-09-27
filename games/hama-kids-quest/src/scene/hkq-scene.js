@@ -101,7 +101,7 @@ export class HkqScene extends Phaser.Scene {
    *  - 画像はキー名で参照できるよう登録
    */
   preload() {
-    this.load.json('levels', 'assets/data/hkq-levels.json');
+    //this.load.json('levels', 'assets/data/hkq-levels.json');
 
     // Robot
     this.load.image('robot_idle0', 'assets/robot/idle/character_robot_idle0.png');
@@ -500,9 +500,13 @@ playCutsceneThen(next, overridePath) {
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
     this.goalSpr?.destroy();
 
+    if (!this.level.goalIcon) {
+      console.warn("【警告】goalIcon が定義されていません:", this.level.id);
+      return; // 画像を読み込まずにスキップ
+    }
     const goalKey = this.level.goalIcon;
-    const texKey = `goal:${goalKey}`;
-
+    //const texKey = `goal:${goalKey}`;
+    const texKey   = goalKey;             // ← フルパスをキーにしてしまう
     if (!this.textures.exists(texKey)) {
       this.load.image(texKey, goalKey);
       this.load.once('complete', () => {
@@ -666,6 +670,7 @@ playCutsceneThen(next, overridePath) {
     this.inventory.blueprint = 0;
     // buildLevel() の末尾あたり
     this.mission = new Mission(this.level);
+    this.mission.reset(this.level);   // ← 追加
 
     this.renderItemBox();
     this.updateBackground();
@@ -848,7 +853,8 @@ playCutsceneThen(next, overridePath) {
                       || this.getDefaultCutscene('battle', 'fail');
             if (path) {
               this.playFailCutscene(path, () => {
-                this.scene.restart({ missionIndex: this.missionIndex });
+                //this.scene.restart({ missionIndex: this.missionIndex });
+                this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
               });
             } else {
               this.scene.restart({ missionIndex: this.missionIndex });
@@ -918,7 +924,7 @@ playCutsceneThen(next, overridePath) {
           this.robotSpr.play('robot_sad', true);
           if (pathFail) {
             this.playFailCutscene(pathFail, () => {
-              this.scene.restart({ missionIndex: this.missionIndex });
+              this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
             });
           } else {
             this.scene.restart({ missionIndex: this.missionIndex });

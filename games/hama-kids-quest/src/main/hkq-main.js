@@ -98,6 +98,65 @@ const stopBtn = document.getElementById("stop");
 const exitBtn = document.getElementById("exit");
 const repeatSelect = document.getElementById("repeat-count");
 
+// === 追加: URLハッシュから起動ミッションを選択 ===
+// === ハッシュから levels ファイルを取得 ===
+function getLevelsFileFromHash() {
+  const m = (location.hash || "").match(/levels=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : "assets/data/levels-tutorial.json";
+}
+function getStartMissionFromHash() {
+  try {
+    const m = (location.hash || "").match(/mission=(\d+)/);
+    return m ? Math.max(0, parseInt(m[1], 10)) : 0;
+  } catch(_) { return 0; }
+}
+
+window.addEventListener("load", async () => {
+  const levelsFile = getLevelsFileFromHash();
+  const res = await fetch(levelsFile, { cache: "no-store" });
+  const levels = await res.json();
+
+  window.hkqLevels = levels;
+  window.totalMissions = levels.length;
+  window.currentMissionIndex = 0;
+
+  const sc = scene && scene();
+  // ← シーンにレベルデータを渡す
+  sc.levels = levels;
+  sc.missionIndex = 0;
+
+  // 最初のミッションをセット
+  setTimeout(() => {
+    try { sc?.gotoMission?.(0); } catch(e){}
+  }, 200);
+
+  // ラストでマップに戻す処理
+  document.addEventListener("hkq:mission-cleared", () => {
+    if (window.currentMissionIndex >= window.totalMissions - 1) {
+      console.log("カテゴリ完結 → マップに戻る");
+      location.href = "html/hkq-map.html";
+    }
+  });
+});
+
+/*
+function getStartMissionFromHash() {
+  try {
+    const m = (location.hash || "").match(/mission=(\d+)/);
+    return m ? Math.max(0, parseInt(m[1], 10)) : 0;
+  } catch(_) { return 0; }
+}
+  */
+
+window.addEventListener("load", () => {
+  const sc = scene && scene();
+  const startIdx = getStartMissionFromHash();
+  // scene がまだ準備中の可能性に備え、少し待ってから
+  setTimeout(() => {
+    try { scene()?.gotoMission?.(startIdx); } catch(_){}
+  }, 200);
+});
+
 /* ============ Runner（公開参照） ============ */
 let mission = null;
 

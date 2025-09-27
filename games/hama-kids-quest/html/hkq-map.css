@@ -1,0 +1,62 @@
+:root {
+  --bg:#0b1020;
+  --frame:#22d3ee;
+  --frame2:#7c3aed;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:#e5e7eb;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans JP",sans-serif;
+  display:grid; place-items:center;
+}
+.wrap{width:min(1020px,95vw); padding:20px}
+.title{margin:0 0 12px; font-weight:800; letter-spacing:.04em}
+.grid{
+  width:100%; aspect-ratio:1/1;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+}
+.cell{
+  position:relative; border:none; padding:0; cursor:pointer; border-radius:8px;
+  background-size:cover; background-position:center; background-repeat:no-repeat;
+  outline:2px solid transparent; transition:transform .12s ease-out;
+}
+.cell::after{
+  /* 枠（点滅用） */
+  content:""; position:absolute; inset:-3px; border-radius:10px;
+  pointer-events:none; opacity:0; border:3px solid var(--frame);
+}
+.cell:hover::after, .cell:focus-visible::after{
+  opacity:1; animation:blink .9s linear infinite;
+}
+.cell:hover{ transform:translateY(-1px) }
+@keyframes blink{
+  0%{ box-shadow:0 0 0 0 var(--frame), inset 0 0 0 0 var(--frame) }
+  50%{ box-shadow:0 0 14px 2px var(--frame), inset 0 0 14px 2px var(--frame2) }
+  100%{ box-shadow:0 0 0 0 var(--frame), inset 0 0 0 0 var(--frame) }
+}
+.hint{opacity:.8; font-size:.9rem; margin:.6rem 0 0}
+
+/* 背景画像の割当て（ファイル名は提示どおり使用） */
+.cell[data-tile="moonland"]    { background-image:url("../assets/floor/moonland.png"); }
+.cell[data-tile="planed-area"] { background-image:url("../assets/floor/planed-area.png"); }
+.cell[data-tile="moon-alien"]  { background-image:url("../assets/floor/moon-alien.png"); }
+/* 使う場合のみ */
+.cell[data-tile="moon-base"]   { background-image:url("../assets/floor/moon-base.png"); }
+
+
+.title {
+  font-size: clamp(2rem, 4vw, 3rem);  /* 大きめで可変 */
+  font-weight: 900;
+  letter-spacing: .05em;
+  color: #fff;
+  text-shadow: 
+    0 0 6px rgba(0, 255, 255, 0.8),
+    0 0 12px rgba(0, 200, 255, 0.6),
+    2px 2px 6px #0b1020;
+  background: #0b1020;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
