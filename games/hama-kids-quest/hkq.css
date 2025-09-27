@@ -58,11 +58,25 @@ html, body { height:100%; }
 
 /* タイトルバーをHUD風に */
 .theme-mecha .titlebar {
-  background: linear-gradient(180deg, rgba(16,24,32,.9), rgba(12,18,26,.9));
-  border-bottom: 1px solid var(--panel-border);
-  text-shadow: 0 0 .4rem rgba(167,139,250,.4);
+  background: url("assets/cutscene/titlebar-image.png") center/cover no-repeat;
+  border-bottom: 10px solid var(--panel-border);
+  text-shadow: 0 0 .5rem rgba(167,139,250,.4);
+  color: #fff;
 }
-.theme-mecha #game-title { letter-spacing:.06em; }
+
+#game-title {
+  font-size: clamp(1.5rem, 4vw, 3rem); /* 最小1.5rem, 最大3rem, 中間は画面幅に比例 */
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.35);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+#mission-label {
+  display: none;
+}
 
 /* ミッション説明（画像＋テキスト）をカード表示 */
 .theme-mecha #mission-clear {
