@@ -1,41 +1,5 @@
 [
   {
-    "id": "B1 設計図をあつめて建設予定地へ",
-    "gridW": 5,
-    "gridH": 4,
-    "uniformH": 0,
-    "robot": { "x": 0, "y": 3, "dir": 1 },
-    "goalSpec": { "pattern": "line", "count": 1, "minDistance": 4 },
-    "goalIcon": "assets/floor/planedsite_goal.png",
-    "enemies": [],
-    "pickups": [{ "type": "blueprint", "count": 3 }],
-    "clear": {
-      "logic": "AND",
-      "conditions": [
-        {
-          "id": "collect_blueprints",
-          "type": "obtain",
-          "item": "blueprint",
-          "count": 3,
-          "text": "設計図を3枚あつめる",
-          "cutscenes": { "success": "assets/cutscene/get_blueprints.png" }
-        },
-        {
-          "id": "reach_goal",
-          "type": "reach",
-          "target": "planed_erea",
-          "text": "建設予定地（ゴール）へ向かう",
-          "cutscenes": {
-            "success": "assets/cutscene/build-lab.png",
-            "fail":    "assets/cutscene/build_failed.png"
-          }
-        }
-      ]
-    },
-    "cmdCap": 8,
-    "repeatInnerCap": 3
-  },
-  {
     "id": "T1-方向コマンドの使い方",
     "gridW": 1,
     "gridH": 4,
@@ -511,6 +475,41 @@
     },
     "cmdCap": 8,
     "repeatInnerCap": 3 
-
+  },
+    {
+    "id": "B1 設計図をあつめて建設予定地へ",
+    "gridW": 5,
+    "gridH": 4,
+    "uniformH": 0,
+    "robot": { "x": 0, "y": 3, "dir": 1 },
+    "goalSpec": { "pattern": "line", "count": 1, "minDistance": 4 },
+    "goalIcon": "assets/floor/planedsite_goal.png",
+    "enemies": [],
+    "pickups": [{ "type": "blueprint", "count": 3 }],
+    "clear": {
+      "logic": "AND",
+      "conditions": [
+        {
+          "id": "collect_blueprints",
+          "type": "obtain",
+          "item": "blueprint",
+          "count": 3,
+          "text": "設計図を3枚あつめる",
+          "cutscenes": { "success": "assets/cutscene/get_blueprints.png" }
+        },
+        {
+          "id": "reach_goal",
+          "type": "reach",
+          "target": "planed_erea",
+          "text": "建設予定地（ゴール）へ向かう",
+          "cutscenes": {
+            "success": "assets/cutscene/build-lab.png",
+            "fail":    "assets/cutscene/build_failed.png"
+          }
+        }
+      ]
+    },
+    "cmdCap": 8,
+    "repeatInnerCap": 3
   }
 ]

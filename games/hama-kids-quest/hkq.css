@@ -65,13 +65,18 @@ html, body { height:100%; }
 }
 
 #game-title {
-  font-size: clamp(1.5rem, 4vw, 3rem); /* 最小1.5rem, 最大3rem, 中間は画面幅に比例 */
-  font-weight: 800;
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);  /* 大きめで可変 */
+  font-weight: 900;
+  letter-spacing: .05em;
   color: #fff;
-  text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.8),
+               0 0 12px rgba(0, 200, 255, 0.6),
+               2px 2px 6px rgba(0,0,0,0.8);
   background: rgba(0,0,0,0.35);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 #mission-label {
