@@ -416,6 +416,17 @@ playCutsceneThen(next, overridePath) {
     });
   }
 
+  /** アニメ再生の安全ヘルパ */
+safePlay(spr, key, fallbackFrameKey) {
+  if (!spr) return;
+  if (this.anims?.exists?.(key)) {
+    spr.play(key, true);
+  } else if (fallbackFrameKey) {
+    // アニメが未登録でも見た目が消えないように保険
+    spr.setTexture(fallbackFrameKey);
+  }
+}
+
   /** snap(v): ピクセル位置の丸め */
   snap(v) { return Math.round(v); }
 
@@ -430,6 +441,7 @@ playCutsceneThen(next, overridePath) {
    * @param {boolean} showTitle - タイトル演出を表示するか
    */
   buildLevel(showTitle) {
+    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
     this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
     const L = this.levels[this.missionIndex] || {};
     this.level = L;
@@ -532,7 +544,7 @@ playCutsceneThen(next, overridePath) {
     this.robotSpr?.destroy();
     this.robotSpr = this.add.sprite(this.snap(spx.x), this.snap(spx.y), 'robot_idle0')
       .setOrigin(0.5, 1).setDisplaySize(Math.floor(isoW * 0.7), Math.floor(isoH * 1.2)).setDepth(100)
-      .play('robot_idle', true);
+      this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
     this.actorLayer.add(this.robotSpr);
     this.fieldLayer.bringToTop(this.robotSpr); // Container 内でロボットを最前面に移動
 
@@ -636,7 +648,7 @@ playCutsceneThen(next, overridePath) {
         const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'monsterA_idle1')
           .setOrigin(0.5, 1).setDepth(8)
           .setDisplaySize(Math.floor(this._isoW * 1.2), Math.floor(this._isoH * 1.6))
-          .play('monsterA_idle', true);
+          this.safePlay(spr, 'monsterA_idle', 'monsterA_idle1');
         this.actorLayer.add(spr);
         (this.monsters || (this.monsters = [])).push({ type, cell, spr });
       }
@@ -741,12 +753,12 @@ playCutsceneThen(next, overridePath) {
    */
   handleGoalReached() {
     this._cleared = true;
-    this.robotSpr.play('robot_cheer', true);
+    this.safePlay(this.robotSpr, 'robot_cheer', 'robot_cheer0');
     document.dispatchEvent(new CustomEvent('hkq:mission-cleared', {
       detail: { mission: this.missionIndex }
     }));
     this.time.delayedCall(900, () => {
-      this.robotSpr.play('robot_cheer', true);
+      this.safePlay(this.robotSpr, 'robot_cheer', 'robot_cheer0');
       this.time.delayedCall(900, () => {
         const last = (this.levels?.length || 1) - 1;
         if (this.missionIndex < last) {
@@ -799,7 +811,7 @@ playCutsceneThen(next, overridePath) {
     this.showDirectionIcon(op, nx, ny);
 
     const p = this.cellToXY(nx, ny);
-    this.robotSpr.play('robot_walk', true);
+    this.safePlay(this.robotSpr, 'robot_walk', 'robot_walk0');
     this.tweens.add({
       targets: this.robotSpr,
       x: this.snap(p.x), y: this.snap(p.y),
@@ -837,7 +849,7 @@ playCutsceneThen(next, overridePath) {
                   this.renderItemBox();
                   document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
                 }
-                this.robotSpr.play('robot_idle', true);
+                this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
                 document.dispatchEvent(new CustomEvent('hkq:tick'));
               });
             } else {
@@ -881,7 +893,7 @@ playCutsceneThen(next, overridePath) {
               if (pathBP) {
                 this.playMidCutscene(pathBP, () => {
                   // カットシーン後、通常進行に戻す
-                  this.robotSpr.play('robot_idle', true);
+                  this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
                   document.dispatchEvent(new CustomEvent('hkq:tick'));
                 });
                 return; // ここで一旦止める（演出を優先）
@@ -921,7 +933,7 @@ playCutsceneThen(next, overridePath) {
           this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
         } else {
           // 失敗カットシーン
-          this.robotSpr.play('robot_sad', true);
+          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
           if (pathFail) {
             this.playFailCutscene(pathFail, () => {
               this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
@@ -933,7 +945,7 @@ playCutsceneThen(next, overridePath) {
           return;
         }
         // 5) 通常
-        this.robotSpr.play('robot_idle', true);
+        this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
         document.dispatchEvent(new CustomEvent('hkq:tick'));
       }
     });
