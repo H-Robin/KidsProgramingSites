@@ -24,8 +24,19 @@
       <button class="cell" data-col="C" data-row="2" data-tile="planed-area"    aria-label="C-2 planed-area"></button>
       <button class="cell" data-col="C" data-row="3" data-tile="moonland"    aria-label="C-3 moonland"></button>
     </section>
-    <p class="hint">マスにカーソルをのせると枠が点滅します。クリックでミッション開始。</p>
+    <p class="hint">マスをクリックすると確認が出ます。プレイする/もどるを選んでください。</p>
   </main>
+    <!-- 追加：ミッション確認モーダル -->
+    <div id="confirm-overlay" hidden>
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">ミッション</h2>
+      <p id="confirm-desc">このミッションをプレイしますか？</p>
+      <div class="actions">
+        <button id="btn-play" class="btn-primary">プレイする</button>
+        <button id="btn-cancel" class="btn-ghost">マップへもどる</button>
+      </div>
+    </div>
+  </div>
   <script src="../src/scene/hkq-map.js"></script>
 </body>
 </html>
