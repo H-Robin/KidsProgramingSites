@@ -22,6 +22,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
             },
           "text": "【くり返し】を使ってゴールに到達" 
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -52,6 +61,15 @@
             "fail":    "assets/cutscene/mission-failed2.png"
           },
           "text": "【くり返し】を使ってゴールに到達"
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -81,6 +99,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
             },
           "text": "【くり返し】を使ってゴールに到達" 
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -109,6 +136,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
             },
           "text": "【くり返し】を使ってゴールに到達" 
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },

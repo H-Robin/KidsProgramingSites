@@ -29,6 +29,15 @@
                 "success": "assets/cutscene/build-lab.png",
                 "fail":    "assets/cutscene/build_failed.png"
                 }
+            },
+            {
+                "id": "life_zero",
+                "type": "life0",
+                "count": 4,
+                "cutscenes": {
+                    "fail": "assets/cutscene/mission-failed3.png"
+                },
+                "text": "エネルギーが0にならない"
             }
             ]
         },

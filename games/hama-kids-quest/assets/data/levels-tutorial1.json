@@ -23,6 +23,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
           },
           "text": "カードキーを持って月面基地へ向かう"
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -53,6 +62,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
           },
           "text": "カードキーを持って月面基地へ向かう"
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -83,6 +101,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
           },
           "text": "カードキーを持って月面基地へ向かう"
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },
@@ -112,6 +139,15 @@
               "fail":    "assets/cutscene/mission-failed2.png"
           },
           "text": "カードキーを持って月面基地へ向かう"
+        },
+        {
+            "id": "life_zero",
+            "type": "life0",
+            "count": 3,
+            "cutscenes": {
+                "fail": "assets/cutscene/mission-failed3.png"
+            },
+            "text": "エネルギーが0にならない"
         }
       ]
     },

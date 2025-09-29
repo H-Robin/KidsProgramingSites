@@ -2,7 +2,7 @@
 import { isoX, isoY, fieldSize } from '../render/iso-math.js';
 import { buildTileLayer } from '../render/tilemap-renderer.js';
 import { loadLevels, pickGoalFromSpec } from '../data/level-loader.js';
-import { Mission } from './hkq-mission.js'; 
+import { Mission, getLifeCountFrom } from './hkq-mission.js';
 
 const ISO_ARROW = {
   up: 'arrow-nw',   // ↖︎
@@ -364,6 +364,23 @@ playCutsceneThen(next, overridePath) {
         this.buildLevel(false);
         this.updateBackground();
       }, 120);
+    });
+
+    const sc = this; // Sceneインスタンスをキャプチャ
+    document.addEventListener('hkq:life-zero', () => {
+      const level = sc.levels?.[sc.missionIndex ?? 0] || sc.level;
+      const conds = level?.clear?.conditions || [];
+      const lifeCond = conds.find(c => (c.type === 'life0' || c.id === 'life_zero'));
+      const failPath = lifeCond?.cutscenes?.fail || 'assets/cutscene/mission-failed3.png';
+      const maxLife = getLifeCountFrom(level);
+
+      sc.playFailCutscene(failPath, () => {
+        sc.buildLevel(true);  // restartMission がなければ buildLevel を使う
+      });
+      document.dispatchEvent(new CustomEvent('hkq:mission-start', { detail:{ level } }));
+      document.dispatchEvent(new CustomEvent('hkq:life-changed',   { detail:{ value:maxLife } }));
+      window.HKQ_LIFE_MAX = maxLife;
+      window.HKQ_LIFE     = maxLife;
     });
   }
 
@@ -942,6 +959,11 @@ safePlay(spr, key, fallbackFrameKey) {
             this.scene.restart({ missionIndex: this.missionIndex });
           }
         }
+          return;
+        }
+        // ライフ0
+        if (Number(window.HKQ_LIFE ?? 3) <= 0){
+          document.dispatchEvent(new CustomEvent('hkq:life-zero'));
           return;
         }
         // 5) 通常

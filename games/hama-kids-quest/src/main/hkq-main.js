@@ -12,6 +12,7 @@ import { initCommandLimitUI } from "../common/ui/command-limit.js";
  */
 window.HKQ_RUNNER_GEN = 0;
 
+
 /**
  * newRunner(programList) : Interpreter を「新しい世代」で生成
  * @param {HTMLElement} listEl - 実行プログラムの UL 要素
@@ -391,6 +392,26 @@ function onProgramTap(ev) {
 paletteRoot.addEventListener("click", dispatchOnce(onPalettePress), { passive: false });
 programList.addEventListener("click", dispatchOnce(onProgramTap), { passive: false });
 
+// -------------------------------
+// ミッション開始時の初期ライフ設定（JSON基準）
+// -------------------------------
+document.addEventListener('hkq:mission-start', (e)=>{
+  const level = e?.detail?.level;
+
+  // JSONの life0 条件から count を読み取る
+  const list = []
+    .concat(Array.isArray(level?.conditions) ? level.conditions : [])
+    .concat(Array.isArray(level?.clear?.conditions) ? level.clear.conditions : []);
+  const c = list.find(x => x?.type === 'life0' || x?.id === 'life_zero');
+  const n = Number(c?.count);
+  const max = (Number.isFinite(n) && n > 0) ? n : 3;  // デフォルト3
+
+  // グローバル変数とHUDを初期化
+  window.HKQ_LIFE_MAX = max;
+  window.HKQ_LIFE     = max;
+  syncLifeToMission(max);
+});
+
 /**
  * 実行系ボタン: run / step / stop / exit
  * 処理概要:
@@ -400,6 +421,17 @@ programList.addEventListener("click", dispatchOnce(onProgramTap), { passive: fal
  *  - exit: 停止→UI空→残数更新→ミッション 1 へ
  */
 runBtn?.addEventListener("click", () => {
+  // ▼追加：押下ごとにライフ-1
+  const panelLife = Number(window.HKQ_LIFE ?? 3);
+  const newLife   = Math.max(0, panelLife - 1);
+  window.HKQ_LIFE = newLife;
+  syncLifeToMission(newLife); 
+
+  if (newLife === 0){
+    // ライフ切れ → onTick側が参照できるようイベント通知
+    document.dispatchEvent(new CustomEvent('hkq:life-zero'));
+    return; // 実行しない
+  }
   if (document.body.classList.contains("ui-locked")) return;
   const times = (repeatSelect?.value ? parseInt(repeatSelect.value, 10) : 1) || 1;
   window.currentRunner?.run?.(programList, { times });
@@ -571,3 +603,19 @@ document.addEventListener("hkq:reach-goal", () => {
     prevRunning = running;
   }, 150);
 })();
+
+
+// JSONから初期ライフ(count)を読むヘルパ
+function getLifeCountFrom(level){
+  const list = []
+    .concat(Array.isArray(level?.conditions) ? level.conditions : [])
+    .concat(Array.isArray(level?.clear?.conditions) ? level.clear.conditions : []);
+  const c = list.find(x => x?.type === 'life0' || x?.id === 'life_zero');
+  const n = Number(c?.count);
+  return (Number.isFinite(n) && n > 0) ? n : 3;
+}
+
+// HUD（Missionパネル）のライフ表示を更新
+function syncLifeToMission(value){
+  document.dispatchEvent(new CustomEvent('hkq:life-changed', { detail:{ value } }));
+}
