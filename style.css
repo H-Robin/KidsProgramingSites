@@ -27,21 +27,35 @@ header {
 
 
 /* ===== Card タイトルをロゴ風に ===== */
+/* カードタイトル（h3） */
 .card-text h3 {
-  font-size: clamp(1.0rem, 2.0vw, 1.4rem); /* ← 少し小さめに */
+  font-size: clamp(1rem, 4vw, 1.6rem);  /* 小画面で縮小、大画面で拡大 */
   font-weight: 600;
   letter-spacing: .04em;
   color: #fff;
   text-shadow: 0 0 6px rgba(0, 255, 255, 0.8),
                0 0 12px rgba(0, 200, 255, 0.6),
                2px 2px 6px #0b1020;
-  background: #0b1020;
+  background: #000000;
   padding: 6px 12px;
   border-radius: 8px;
   display: inline-block;
-  white-space: nowrap; /* 改行禁止で1行に収める */
+  white-space: normal;      /* ← 改行を許可 */
+  word-break: break-word;   /* ← 長い単語でも折り返し */
+  max-width: 100%;          /* ← 親からはみ出さない */
+  box-sizing: border-box;
 }
 
+/* カード本文（pタグ） */
+.card-text p {
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem); /* 画面幅に応じて縮小 */
+  margin: 0.4em 0;
+  line-height: 1.4;
+  color: #e2e8f0;
+  word-break: break-word;  /* 長い日本語・英語でも折り返し */
+  max-width: 100%;
+  box-sizing: border-box;
+}
 
 .card-image {
   flex: 1 1 40%;
