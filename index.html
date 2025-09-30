@@ -30,5 +30,35 @@
         </div>
       </article>
     </section>
+   <!-- ▼ Safari用ブロックオーバーレイ（修正版） -->
+    <div id="safari-block" style="display:none; position:fixed; inset:0;
+        background:#0b1020; color:#fff; z-index:99999; 
+        align-items:center; justify-content:center;">
+      <div style="max-width:680px; padding:24px; background:#111a33; border-radius:16px; text-align:center;">
+        <h2>Safari は現在サポートしていません</h2>
+        <p>Google Chrome または Microsoft Edge でご利用ください。</p>
+        <p>
+          <a href="https://www.google.com/chrome/" style="color:#9bd1ff;">Chrome を入手</a> ／
+          <a href="https://www.microsoft.com/edge" style="color:#9bd1ff;">Edge を入手</a>
+        </p>
+      </div>
+    </div>
+
+    <script>
+    (function() {
+      var ua = navigator.userAgent;
+      // macOS/iOS Safari（Chrome/Edge/Opera/Brave を除外）
+      var isSafari = /Safari/.test(ua) && !/(Chrome|Chromium|Edg|OPR|Brave)/.test(ua);
+      // iOS版の各種Safari（Chrome/FirefoxのiOS版はUAに CriOS/FxiOS/EdgiOS が入る）
+      var isIOSSafari = /iP(hone|ad|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
+
+      if (isSafari || isIOSSafari) {
+        var el = document.getElementById('safari-block');
+        el.style.display = 'flex'; // ここで初めて表示にする
+        document.body.classList.add('ui-locked'); // 必要なら操作ロック
+      }
+    })();
+    </script>
+    <!-- ▲ Safari用ブロックオーバーレイ -->
 </body>
 </html>
