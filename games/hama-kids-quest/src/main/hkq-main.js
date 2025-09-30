@@ -443,11 +443,19 @@ stepBtn?.addEventListener("click", () => {
 stopBtn?.addEventListener("click", () => {
   window.clearRunnerQueue?.();
 });
+/* 
 exitBtn?.addEventListener("click", () => {
   try { window.currentRunner?.stop?.(); } catch (_) {}
   programList.innerHTML = "";
   window.HKQ_CMD_LIMIT?.refreshCapUI?.();
   try { scene()?.gotoMission?.(0); } catch (_) {}
+});
+*/
+exitBtn?.addEventListener("click", () => {
+  try { window.currentRunner?.stop?.(); } catch (_) {}
+  programList.innerHTML = "";
+  window.HKQ_CMD_LIMIT?.refreshCapUI?.();
+  location.href = "html/hkq-map.html";  // ★ マップページへ遷移
 });
 
 /**
