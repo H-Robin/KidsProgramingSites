@@ -950,7 +950,7 @@ safePlay(spr, key, fallbackFrameKey) {
           this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
         } else {
           // 失敗カットシーン
-          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
+          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad1');
           if (pathFail) {
             this.playFailCutscene(pathFail, () => {
               this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
