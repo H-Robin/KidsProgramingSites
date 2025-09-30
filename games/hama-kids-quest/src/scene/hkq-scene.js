@@ -407,31 +407,75 @@ playCutsceneThen(next, overridePath) {
    *  - アニメーション（robot/monster）をゲーム単位で一度だけ作成
    *  - シーン再起動時の重複登録を回避
    */
-  createAnimations() {
-    if (this.sys.game.__hkqAnimsBuilt) return;
-    this.sys.game.__hkqAnimsBuilt = true;
+createAnimations() {
+  // 既に存在するかどうかを確認し、無ければ作成する
 
-    this.anims.create({ key: 'robot_idle',
-      frames: [{ key: 'robot_idle0' }, { key: 'robot_idle1' }],
-      frameRate: 2, repeat: -1
-    });
-    this.anims.create({ key: 'robot_walk',
-      frames: Array.from({ length: 8 }, (_, i) => ({ key: `robot_walk${i}` })),
-      frameRate: 10, repeat: -1
-    });
-    this.anims.create({ key: 'robot_cheer',
-      frames: [{ key: 'robot_cheer0' }, { key: 'robot_cheer1' }],
-      frameRate: 6, repeat: -1
-    });
-    this.anims.create({ key: 'monsterA_idle',
-      frames: [{ key: 'monsterA_idle1' }, { key: 'monsterA_idle2' }],
-      frameRate: 2, repeat: -1
-    });
-    this.anims.create({ key: 'robot_sad',
-      frames: [{ key: 'robot_sad1' }, { key: 'robot_sad2' }, { key: 'robot_sad3' }],
-      frameRate: 6, repeat: -1
+  if (!this.anims.exists('robot_idle')) {
+    this.anims.create({
+      key: 'robot_idle',
+      frames: this.anims.generateFrameNames('robot', {
+        prefix: 'idle',
+        start: 0,
+        end: 3
+      }),
+      frameRate: 4,
+      repeat: -1
     });
   }
+
+  if (!this.anims.exists('robot_walk')) {
+    this.anims.create({
+      key: 'robot_walk',
+      frames: this.anims.generateFrameNames('robot', {
+        prefix: 'walk',
+        start: 0,
+        end: 7
+      }),
+      frameRate: 8,
+      repeat: -1
+    });
+  }
+
+  if (!this.anims.exists('robot_cheer')) {
+    this.anims.create({
+      key: 'robot_cheer',
+      frames: this.anims.generateFrameNames('robot', {
+        prefix: 'cheer',
+        start: 0,
+        end: 3
+      }),
+      frameRate: 4,
+      repeat: -1
+    });
+  }
+
+  if (!this.anims.exists('monsterA_idle')) {
+    this.anims.create({
+      key: 'monsterA_idle',
+      frames: this.anims.generateFrameNames('monster-a', {
+        prefix: 'idle',
+        start: 0,
+        end: 3
+      }),
+      frameRate: 4,
+      repeat: -1
+    });
+  }
+
+  if (!this.anims.exists('robot_sad')) {
+    this.anims.create({
+      key: 'robot_sad',
+      frames: this.anims.generateFrameNames('robot', {
+        prefix: 'sad',
+        start: 1,
+        end: 3
+      }),
+      frameRate: 3,
+      repeat: -1
+    });
+  }
+}
+
 
   /** アニメ再生の安全ヘルパ */
 safePlay(spr, key, fallbackFrameKey) {
@@ -950,7 +994,7 @@ safePlay(spr, key, fallbackFrameKey) {
           this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
         } else {
           // 失敗カットシーン
-          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
+          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad1');
           if (pathFail) {
             this.playFailCutscene(pathFail, () => {
               this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
