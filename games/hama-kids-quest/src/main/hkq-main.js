@@ -124,12 +124,10 @@ window.addEventListener("load", async () => {
   const sc = scene && scene();
   // ← シーンにレベルデータを渡す
   sc.levels = levels;
-  sc.missionIndex = 0;
-
-  // 最初のミッションをセット
-  setTimeout(() => {
-    try { sc?.gotoMission?.(0); } catch(e){}
-  }, 200);
+  const startIdx = (typeof getStartMissionFromHash === 'function') ? getStartMissionFromHash() : 0;
+  sc.missionIndex = startIdx;
+  // 最初のミッションを1回だけセット
+  setTimeout(() => { try { sc?.gotoMission?.(startIdx); } catch(e){} }, 200);
 
   // ラストでマップに戻す処理
   document.addEventListener("hkq:mission-cleared", () => {
@@ -148,7 +146,7 @@ function getStartMissionFromHash() {
   } catch(_) { return 0; }
 }
   */
-
+/*
 window.addEventListener("load", () => {
   const sc = scene && scene();
   const startIdx = getStartMissionFromHash();
@@ -157,7 +155,7 @@ window.addEventListener("load", () => {
     try { scene()?.gotoMission?.(startIdx); } catch(_){}
   }, 200);
 });
-
+*/
 /* ============ Runner（公開参照） ============ */
 let mission = null;
 

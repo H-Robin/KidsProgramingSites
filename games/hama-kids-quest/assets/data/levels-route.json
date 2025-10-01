@@ -1,0 +1,79 @@
+[
+    {
+        "id": "ROUTE1-1 岩とゲート",
+        "gridW": 6,
+        "gridH": 6,
+        "robot": { "x": 0, "y": 2, "dir": 1 },
+        "goal":  { "x": 5, "y": 1 },
+        "goalIcon": "assets/floor/moon-base2.png",
+        "obstacles": [
+            { "x": 2, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 4, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "gate", "pass": "need_item", "item": "key" }
+        ],
+
+        "pickups": [
+            { "type": "key", "x": 1, "y": 1 }
+        ],
+
+        "clear": {
+            "logic": "AND",
+            "conditions": [
+            {
+                "id": "reach_goal",
+                "type": "reach",
+                "target": "lunar_base",
+                "requires": ["key"],
+                "cutscenes": {
+                "success": "assets/cutscene/mission-success1.png",
+                "fail":    "assets/cutscene/mission-failed2.png"
+                },
+                "text": "カードキーを取ってゲートを通過し、基地へ向かう"
+            }
+            ]
+        },
+
+        "cmdCap": 8,
+        "repeatInnerCap": 3
+    },
+    {
+        "id": "ROUTE1-2 岩とゲート",
+        "gridW": 6,
+        "gridH": 6,
+        "robot": { "x": 0, "y": 2, "dir": 1 },
+        "goal":  { "x": 5, "y": 2 },
+        "goalIcon": "assets/floor/moon-base2.png",
+
+        "obstacles": [
+            { "x": 2, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 4, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "gate", "pass": "need_item", "item": "key" }
+        ],
+
+        "pickups": [
+            { "type": "key", "x": 1, "y": 1 }
+        ],
+
+        "clear": {
+            "logic": "AND",
+            "conditions": [
+            {
+                "id": "reach_goal",
+                "type": "reach",
+                "target": "lunar_base",
+                "requires": ["key"],
+                "cutscenes": {
+                "success": "assets/cutscene/mission-success1.png",
+                "fail":    "assets/cutscene/mission-failed2.png"
+                },
+                "text": "カードキーを取ってゲートを通過し、基地へ向かう"
+            }
+            ]
+        },
+
+        "cmdCap": 8,
+        "repeatInnerCap": 3
+    }
+]

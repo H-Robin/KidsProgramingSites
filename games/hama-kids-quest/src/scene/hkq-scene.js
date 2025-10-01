@@ -32,11 +32,35 @@ export class HkqScene extends Phaser.Scene {
    *  - レベルを再構築（タイトル表示あり）
    * @param {number} idx
    */
+  /* 
   gotoMission(idx = 0) {
     this.clearRunnerQueue();   // ミッション開始時は必ずキューを空に
     const last = (this.levels?.length || 1) - 1;
     this.missionIndex = Phaser.Math.Clamp(idx|0, 0, last);
     this.buildLevel(true);
+  }
+  */
+  gotoMission(idx = 0) {
+    const len = Array.isArray(this.levels) ? this.levels.length : 0;
+    if (!len) return;
+    idx = Math.min(Math.max(idx|0, 0), len - 1);
+    this.missionIndex = idx;
+
+    if (this._builtForMission === idx) {
+      // すでにこのミッションは build済み → ソフトリセットだけ（再buildしない）
+      this.softReset?.();
+      return;
+    }
+    if (this._building) return; // 再入防止
+
+    this._building = true;
+    try {
+      this.buildLevel(true);
+      this.updateBackground?.();
+      this._builtForMission = idx;
+    } finally {
+      this._building = false;
+    }
   }
 
   // ---- Lock helpers -------------------------------------------------------
@@ -349,20 +373,29 @@ playCutsceneThen(next, overridePath) {
     if (this.missionIndex < 0 || this.missionIndex > last) this.missionIndex = 0;
 
     this.createAnimations();
+/*
     this.buildLevel(true);
     this.updateBackground();
-
-    // Resize handling（連続 resize をデバウンス）
+*/
+/* シーンが立ち上がった瞬間に buildLevel(true) を呼んでいるなら、
+  levels が注入済みのときだけ呼ぶ */
+  if (Array.isArray(this.levels) && this.levels.length) {
+    this.buildLevel(true);
+    this.updateBackground();
+  }
+      // Resize handling（連続 resize をデバウンス）
     this._lastSize = { w: this.scale.width, h: this.scale.height };
     this._resizeTid = null;
     this.scale.on('resize', () => {
       const w = this.scale.width, h = this.scale.height;
       if (Math.abs(w - this._lastSize.w) < 8 && Math.abs(h - this._lastSize.h) < 8) return;
-      clearTimeout(this._resizeTid);
-      this._resizeTid = setTimeout(() => {
+        clearTimeout(this._resizeTid);
+        this._resizeTid = setTimeout(() => {
         this._lastSize = { w, h };
-        this.buildLevel(false);
-        this.updateBackground();
+        // レベル未注入のとき/すでに同ミッションのときは
+        // build せずレイアウトだけ調整
+//        this.buildLevel(false);
+       this.updateBackground?.();
       }, 120);
     });
 
@@ -458,6 +491,9 @@ safePlay(spr, key, fallbackFrameKey) {
    * @param {boolean} showTitle - タイトル演出を表示するか
    */
   buildLevel(showTitle) {
+    console.debug('[DBG] buildLevel once:',
+       { idx: this.missionIndex, id: this.levels?.[this.missionIndex]?.id });
+
     this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
     this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
     const L = this.levels[this.missionIndex] || {};
