@@ -104,7 +104,7 @@ function createCoreAnimations(scene) {
   });
 
   // 任意：モンスターは“存在すれば”作る（無ければスキップ）
-  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle0')) {
+  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle1')) {
     scene.anims.create({
       key: 'monsterA_idle',
       frames: F(['monsterA_idle0','monsterA_idle1']),
@@ -247,8 +247,15 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('bg_moon', 'assets/wallpaper/moon.png');
     // 設計図アイコン（新規）
     this.load.image('blueprint_icon', 'assets/items/blueprint1.png');
-    }
 
+    // Obstacles / Gates（ルート探索用）
+    this.load.image('ob_rock',     'assets/floor/rock.png');
+    this.load.image('ob_wall',     'assets/floor/wall.png');
+    this.load.image('gate_closed', 'assets/floor/closed-gate.png');
+    this.load.image('gate_opened', 'assets/floor/opened-gate.png');
+  }
+
+    
   // ---- Cutscenes (success / mid / fail) ----------------------------------
 
   // 条件1件を見つける
@@ -282,50 +289,50 @@ export class HkqScene extends Phaser.Scene {
    *  - 再生中は lock、終了時に unlock → next() を呼ぶ
    * @param {Function} next - 再生完了後のコールバック
    */
-// 新: 第2引数 overridePath でパス上書き可
-playCutsceneThen(next, overridePath) {
-  const imgPath = overridePath || this.level?.cutscene?.image || null;
-  if (!imgPath) { next?.(); return; }
+  // 新: 第2引数 overridePath でパス上書き可
+  playCutsceneThen(next, overridePath) {
+    const imgPath = overridePath || this.level?.cutscene?.image || null;
+    if (!imgPath) { next?.(); return; }
 
-  const texKey = `cutscene:${imgPath}`;
-  const startShow = () => {
-    const cam = this.cameras.main;
-    const cx = cam.worldView.centerX ?? cam.centerX;
-    const cy = cam.worldView.centerY ?? cam.centerY;
+    const texKey = `cutscene:${imgPath}`;
+    const startShow = () => {
+      const cam = this.cameras.main;
+      const cx = cam.worldView.centerX ?? cam.centerX;
+      const cy = cam.worldView.centerY ?? cam.centerY;
 
-    const node = this.add.image(cx, cy, texKey)
-      .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
+      const node = this.add.image(cx, cy, texKey)
+        .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
 
-    const vw = cam.width, vh = cam.height;
-    const iw = node.width || 1024, ih = node.height || 512;
-    node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
+      const vw = cam.width, vh = cam.height;
+      const iw = node.width || 1024, ih = node.height || 512;
+      node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
 
-    this._cutscenePlaying = true;
-    this.lockGame();
-    document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+      this._cutscenePlaying = true;
+      this.lockGame();
+      document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
 
-    this.tweens.add({
-      targets: node, alpha: 1, duration: 500, ease: 'quad.out',
-      onComplete: () => {
-        this.time.delayedCall(1000, () => {
-          this.tweens.add({
-            targets: node, alpha: 0, duration: 500, ease: 'quad.in',
-            onComplete: () => {
-              node.destroy();
-              this._cutscenePlaying = false;
-              this.unlockGame();
-              document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
-              next?.();
-            }
+      this.tweens.add({
+        targets: node, alpha: 1, duration: 500, ease: 'quad.out',
+        onComplete: () => {
+          this.time.delayedCall(1000, () => {
+            this.tweens.add({
+              targets: node, alpha: 0, duration: 500, ease: 'quad.in',
+              onComplete: () => {
+                node.destroy();
+                this._cutscenePlaying = false;
+                this.unlockGame();
+                document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
+                next?.();
+              }
+            });
           });
-        });
-      }
-    });
-  };
+        }
+      });
+    };
 
-  if (this.textures.exists(texKey)) startShow();
-  else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
-}
+    if (this.textures.exists(texKey)) startShow();
+    else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
+  }
   /**
    * playMidCutscene(path, next)
    * 処理概要:
@@ -333,7 +340,7 @@ playCutsceneThen(next, overridePath) {
    * @param {string} path  - 画像ファイルパス
    * @param {Function} next - 再生完了後のコールバック
    */
-  playMidCutscene(path, next) {
+    playMidCutscene(path, next) {
     if (this._cutscenePlaying) return;
     if (!path) { next?.(); return; }
 
@@ -563,16 +570,16 @@ playCutsceneThen(next, overridePath) {
     });
   }
 
-  /** アニメ再生の安全ヘルパ */
-safePlay(spr, key, fallbackFrameKey) {
-  if (!spr) return;
-  if (this.anims?.exists?.(key)) {
-    spr.play(key, true);
-  } else if (fallbackFrameKey) {
-    // アニメが未登録でも見た目が消えないように保険
-    spr.setTexture(fallbackFrameKey);
+    /** アニメ再生の安全ヘルパ */
+  safePlay(spr, key, fallbackFrameKey) {
+    if (!spr) return;
+    if (this.anims?.exists?.(key)) {
+      spr.play(key, true);
+    } else if (fallbackFrameKey) {
+      // アニメが未登録でも見た目が消えないように保険
+      spr.setTexture(fallbackFrameKey);
+    }
   }
-}
 
   /** snap(v): ピクセル位置の丸め */
   snap(v) { return Math.round(v); }
@@ -589,7 +596,19 @@ safePlay(spr, key, fallbackFrameKey) {
    */
   buildLevel(showTitle) {
     console.log('[DBG] buildLevel once:',
-       { idx: this.missionIndex, id: this.levels?.[this.missionIndex]?.id });
+        { idx: this.missionIndex, id: this.levels?.[this.missionIndex]?.id });
+    // --- Restart reset: インベントリとUIを初期化（必ず鍵は未所持へ） ---
+    this.inventory = this.inventory || {};
+    this.inventory.key = false;        // ← 重要：ゲートは閉に戻したいので false
+    // （必要なら）武器等も同時に初期化
+    this.inventory.weapon = false;
+    // 既存のピックアップ表示が残っていたら消す
+    try { this.keySpr?.destroy(); } catch(_) {}
+    this.keySpr = null;
+    try { this.weaponSpr?.destroy(); } catch(_) {}
+    this.weaponSpr = null;
+    // アイテムボックスも空表示へ
+    this.renderItemBox?.();
 
 //    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
     this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
@@ -692,6 +711,44 @@ safePlay(spr, key, fallbackFrameKey) {
 
     }
 
+    // 占有セル集合：先に初期化しておく（この後で obstacles/pickups で使う）
+    const occupied = new Set();
+    occupied.add(this.occKey(this.startCell.x, this.startCell.y));
+    occupied.add(this.occKey(this.goalCell.x,  this.goalCell.y));
+    // --- Obstacles (rock/wall/gate) from JSON ---
+    this.obstacles = [];
+    this.occObstacles = new Map();
+    const obDefs = Array.isArray(L.obstacles) ? L.obstacles : [];
+
+    obDefs.forEach(def => {
+      const x = def.x|0, y = def.y|0;
+      if (x<0||y<0||x>=this.gridW||y>=this.gridH) return;
+
+      let key = null;
+      switch (def.type) {
+        case 'rock': key = 'ob_rock'; break;
+        case 'wall': key = 'ob_wall'; break;
+        case 'gate': key = (this.inventory?.key ? 'gate_opened' : 'gate_closed'); break;
+      }
+      if (!key) return;
+
+      const pos = this.cellToXY(x, y);
+      const spr = this.add.image(this.snap(pos.x), this.snap(pos.y), key)
+        .setOrigin(0.5,1).setDepth(7)
+        .setDisplaySize(Math.floor(this._isoW*1.0), Math.floor(this._isoH*1.2));
+      this.groundLayer.add(spr);
+
+      const ob = { x, y, type:def.type, pass:(def.pass||'never'), item:(def.item||null), spr };
+      this.obstacles.push(ob);
+      this.occObstacles.set(this.occKey(x,y), ob);
+
+      // 占有セルとしてマーク（ピックアップ/敵の重なりを避ける）
+      this.addOccupied(occupied, x, y);
+    });
+
+    // 初期状態のゲート見た目を整える（鍵未所持なら閉、所持なら開）
+    this.refreshGates?.();
+
     // Robot sprite
     const spx = this.cellToXY(this.startCell.x, this.startCell.y);
     this.robotSpr?.destroy();
@@ -717,18 +774,15 @@ safePlay(spr, key, fallbackFrameKey) {
     if (this.monsters?.length) this.monsters.forEach(m => { try { m.spr.destroy(); } catch(_) {} });
     this.monsters = [];
 
-    // 占有セルセット
-    const occupied = new Set();
-    occupied.add(this.occKey(this.startCell.x, this.startCell.y));
-    occupied.add(this.occKey(this.goalCell.x,  this.goalCell.y));
-
     // ピックアップ定義
     const pickupDefs = Array.isArray(L.pickups) ? L.pickups : [];
 
     // WEAPON
     const weaponDef = pickupDefs.find(p => p.type === 'weapon');
     if (weaponDef && (weaponDef.count|0) > 0) {
-      const cellW = this.pickFreeCell(occupied);
+      const cellW = (Number.isFinite(weaponDef?.x) && Number.isFinite(weaponDef?.y))
+        ? { x: weaponDef.x|0, y: weaponDef.y|0 }
+        : this.pickFreeCell(occupied);
       if (cellW) {
         this.weaponCell = cellW;
         const pos = this.cellToXY(cellW.x, cellW.y);
@@ -739,18 +793,31 @@ safePlay(spr, key, fallbackFrameKey) {
       }
     }
 
-    // KEY
-    const keyDef = pickupDefs.find(p => p.type === 'key');
-    this._hasKeyPickup = !!(keyDef && (keyDef.count|0) > 0); // この面にキーが存在するか
-    if (keyDef && (keyDef.count|0) > 0) {
-      const cellK = this.pickFreeCell(occupied);
+    // KEY（count 未指定は 1 扱い。x,y が有効ならそこに置く）
+    const keyDef = (Array.isArray(pickupDefs) ? pickupDefs : []).find(p => (p.type||'').toLowerCase() === 'key');
+    const keyCount = Number.isFinite(keyDef?.count) ? (keyDef.count|0) : 1;
+    this._hasKeyPickup = !!(keyDef && keyCount > 0);
+
+    if (this._hasKeyPickup) {
+      // まず JSON 指定座標を試す
+      let cellK = null;
+      if (Number.isFinite(keyDef.x) && Number.isFinite(keyDef.y)) {
+        const kx = keyDef.x|0, ky = keyDef.y|0;
+        const inBounds = (kx>=0 && ky>=0 && kx<this.gridW && ky<this.gridH);
+        const blocked  = this.occObstacles?.has?.(this.occKey(kx,ky)) || occupied.has(this.occKey(kx,ky));
+        if (inBounds && !blocked) cellK = { x:kx, y:ky };
+      }
+      // 置けなければ空きマスへ
+      if (!cellK) cellK = this.pickFreeCell(occupied);
+
       if (cellK) {
         this.keyCell = cellK;
         const pos = this.cellToXY(cellK.x, cellK.y);
         this.keySpr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'key_icon')
-          .setOrigin(0.5, 1).setDepth(9)
+          .setOrigin(0.5,1).setDepth(9)
           .setDisplaySize(Math.floor(this._isoW * 0.8), Math.floor(this._isoH * 0.9));
         this.fieldLayer.add(this.keySpr);
+        this.addOccupied(occupied, cellK.x, cellK.y);
       }
     }
 
@@ -957,6 +1024,25 @@ safePlay(spr, key, fallbackFrameKey) {
 
     const nx = Phaser.Math.Clamp(this.robotCell.x + dir.dx, 0, this.gridW - 1);
     const ny = Phaser.Math.Clamp(this.robotCell.y + dir.dy, 0, this.gridH - 1);
+
+    // === 進行先の通行可否を先に確認 ===
+    if (!this.canEnter(nx, ny)) {
+      this.showDirectionIcon(op, nx, ny);
+      this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
+
+      // 軽いバンプ演出（行き先へ少しだけ動いて戻す）
+      const p1 = this.cellToXY(nx, ny);
+      const back = this.cellToXY(this.robotCell.x, this.robotCell.y);
+      this.tweens.add({
+        targets: this.robotSpr,
+        x: this.snap(p1.x), y: this.snap(p1.y),
+        duration: 120, yoyo: true, repeat: 0, ease: 'quad.out',
+        onComplete: () => document.dispatchEvent(new CustomEvent('hkq:tick'))
+      });
+      return;
+    }
+
+    // ここで初めてセルを更新（通行可の場合）
     this.robotCell = { x: nx, y: ny };
 
     document.dispatchEvent(new CustomEvent('hkq:move', { detail: { pos: { x: nx, y: ny } } }));
@@ -1061,6 +1147,7 @@ safePlay(spr, key, fallbackFrameKey) {
           this.keySpr = null;
           this.renderItemBox();
           document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'key' } }));
+          this.refreshGates?.();
         }
 
         // 4) ゴール到達（鍵チェック）
@@ -1200,5 +1287,35 @@ safePlay(spr, key, fallbackFrameKey) {
    */
   clearRunnerQueue() {
     window.clearRunnerQueue?.();
+  }
+
+    // 進入可否の判定：岩/壁は不可、ゲートは pass 規則＆アイテムで可否
+  canEnter(x, y) {
+    const ob = this.occObstacles?.get?.(this.occKey(x,y));
+    if (!ob) return true;
+
+    if (ob.type === 'rock' || ob.type === 'wall') return false;
+
+    if (ob.type === 'gate') {
+      const pass = ob.pass || 'never';     // 'never' | 'need_item' | 'always'
+      if (pass === 'always') return true;
+      if (pass === 'never')  return false;
+      if (pass === 'need_item') {
+        const need = ob.item || 'key';
+        return !!this.inventory?.[need];
+      }
+    }
+    return true;
+  }
+
+  // 所持鍵に応じてゲートの見た目を一括更新
+  refreshGates() {
+    if (!Array.isArray(this.obstacles)) return;
+    const opened = !!this.inventory?.key;
+    this.obstacles.forEach(ob => {
+      if (ob.type !== 'gate' || !ob.spr) return;
+      const want = opened ? 'gate_opened' : 'gate_closed';
+      if (ob.spr.texture.key !== want) ob.spr.setTexture(want);
+    });
   }
 }

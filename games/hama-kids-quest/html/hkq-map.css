@@ -43,7 +43,11 @@ body{
 .cell[data-tile="moon-alien"]  { background-image:url("../assets/floor/moon-alien.png"); }
 /* 使う場合のみ */
 .cell[data-tile="moon-base"]   { background-image:url("../assets/floor/moon-base.png"); }
-
+/* ルート開発タイルの背景画像（hkq-map.html と同階層の CSS から1つ上の assets を参照） */
+.cell[data-tile="route-dev"]{ background-image: url("../assets/floor/route-dev.png");
+  background-size: cover;
+  background-position: center;
+}
 
 .title {
   font-size: clamp(2rem, 4vw, 3rem);  /* 大きめで可変 */

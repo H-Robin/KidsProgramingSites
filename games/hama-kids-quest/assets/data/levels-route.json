@@ -1,20 +1,28 @@
 [
     {
         "id": "ROUTE1-1 岩とゲート",
-        "gridW": 6,
-        "gridH": 6,
-        "robot": { "x": 0, "y": 2, "dir": 1 },
-        "goal":  { "x": 5, "y": 1 },
+        "gridW": 5,
+        "gridH": 5,
+        "robot": { "x": 0, "y": 4, "dir": 1 },
+        "goal":  { "x": 4, "y": 0 },
         "goalIcon": "assets/floor/moon-base2.png",
         "obstacles": [
-            { "x": 2, "y": 2, "type": "rock", "pass": "never" },
-            { "x": 3, "y": 2, "type": "rock", "pass": "never" },
-            { "x": 4, "y": 2, "type": "rock", "pass": "never" },
-            { "x": 3, "y": 1, "type": "gate", "pass": "need_item", "item": "key" }
+            { "x": 4, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 2, "type": "gate", "pass": "need_item", "item": "key" },
+            { "x": 4, "y": 2, "type": "wall", "pass": "never" },
+            { "x": 4, "y": 3, "type": "wall", "pass": "never" },
+            { "x": 2, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 4, "y": 4, "type": "wall", "pass": "never" },
+            { "x": 4, "y": 2, "type": "wall", "pass": "never" }
+
         ],
 
         "pickups": [
-            { "type": "key", "x": 1, "y": 1 }
+            { "type": "key", "x": 3, "y": 4 }
         ],
 
         "clear": {
@@ -42,13 +50,13 @@
         "gridW": 6,
         "gridH": 6,
         "robot": { "x": 0, "y": 2, "dir": 1 },
-        "goal":  { "x": 5, "y": 2 },
+        "goal":  { "x": 4, "y": 0 },
         "goalIcon": "assets/floor/moon-base2.png",
 
         "obstacles": [
-            { "x": 2, "y": 2, "type": "rock", "pass": "never" },
-            { "x": 3, "y": 2, "type": "rock", "pass": "never" },
-            { "x": 4, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 4, "y": 1, "type": "rock", "pass": "never" },
             { "x": 3, "y": 1, "type": "gate", "pass": "need_item", "item": "key" }
         ],
 

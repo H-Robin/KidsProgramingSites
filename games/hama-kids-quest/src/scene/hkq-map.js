@@ -7,6 +7,7 @@ const TILE_TO_LEVEL_ID_PREFIX = {
   "moonland":    "基礎編：くり返しコマンドの使い方", 
   "planed-area": "応用編：実験棟建設",
   "moon-alien":  "応用編：宇宙人戦",          
+  "route-dev":  "応用編：月面ルート開発",          
   "moon-base":   "基礎編：方向コマンドの使い方"
 };
 
@@ -15,6 +16,7 @@ const TILE_TO_LEVEL_FILE = {
   "moonland":    "assets/data/levels-tutorial2.json",
   "moon-alien":  "assets/data//levels-monster.json",
   "planed-area": "assets/data//levels-blueprint.json",
+  "route-dev":   "assets/data//levels-route.json",
   "moon-base":   "assets/data//levels-tutorial1.json"
 };
 
