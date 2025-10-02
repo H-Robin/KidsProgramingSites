@@ -121,18 +121,17 @@ window.addEventListener("load", async () => {
   window.totalMissions = levels.length;
   window.currentMissionIndex = 0;
 
-  const sc = scene && scene();
-  // ← シーンにレベルデータを渡す
-  sc.levels = levels;
-  const startIdx = (typeof getStartMissionFromHash === 'function') ? getStartMissionFromHash() : 0;
-  sc.missionIndex = startIdx;
-  // 最初のミッションを1回だけセット
-  setTimeout(() => { try { sc?.gotoMission?.(startIdx); } catch(e){} }, 200);
+  const startIdx = (typeof getStartMissionFromHash === 'function')
+    ? getStartMissionFromHash() : 0;
 
-  // ラストでマップに戻す処理
+  // ★ シーンにはイベントで渡す（シーン側が受けて 1 回だけビルド）
+  document.dispatchEvent(new CustomEvent('hkq:set-levels', {
+    detail: { levels, startIdx }
+  }));
+
+  // カテゴリ完了 → マップへ戻る処理は現状どおり
   document.addEventListener("hkq:mission-cleared", () => {
     if (window.currentMissionIndex >= window.totalMissions - 1) {
-      console.log("カテゴリ完結 → マップに戻る");
       location.href = "html/hkq-map.html";
     }
   });
@@ -198,9 +197,9 @@ window.clearRunnerQueue = function () {
 };
 
 /* ===============================
-   パレット作成 & アイコン化
-   - 表示: 矢印
-   - 内部: 英語 op
+  パレット作成 & アイコン化
+  - 表示: 矢印
+  - 内部: 英語 op
    =============================== */
 const CMDS = [
   { label: "↑", op: "up" },

@@ -29,9 +29,9 @@ const TEXTURE_MANIFEST = {
   'robot_cheer0': 'assets/robot/cheer/character_robot_cheer0.png',
   'robot_cheer1': 'assets/robot/cheer/character_robot_cheer1.png',
   // sad（ファイル名が 1 始まりなのでキーも 1..3 で合わせます）
+  'robot_sad0':   'assets/robot/sad/sad0.png',
   'robot_sad1':   'assets/robot/sad/sad1.png',
   'robot_sad2':   'assets/robot/sad/sad2.png',
-  'robot_sad3':   'assets/robot/sad/sad3.png',
 
   // （任意）モンスターを使うならここに追加:
   // 'monsterA_idle0': 'assets/monsterA/idle0.png',
@@ -44,7 +44,7 @@ const REQUIRED_CORE_KEYS = [
   'robot_walk0','robot_walk1','robot_walk2','robot_walk3',
   'robot_walk4','robot_walk5','robot_walk6','robot_walk7',
   'robot_cheer0','robot_cheer1',
-  'robot_sad1','robot_sad2','robot_sad3',
+  'robot_sad0','robot_sad1','robot_sad2',
 ];
 
 // 未ロードキーを見つけてロード → 完了まで待つ
@@ -99,12 +99,12 @@ function createCoreAnimations(scene) {
   });
   scene.anims.create({
     key: 'robot_sad',
-    frames: F(['robot_sad1','robot_sad2','robot_sad3']),
+    frames: F(['robot_sad0','robot_sad1','robot_sad2']),
     frameRate: 6, repeat: -1
   });
 
   // 任意：モンスターは“存在すれば”作る（無ければスキップ）
-  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle1')) {
+  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle0')) {
     scene.anims.create({
       key: 'monsterA_idle',
       frames: F(['monsterA_idle0','monsterA_idle1']),
@@ -234,16 +234,16 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('robot_cheer0', 'assets/robot/cheer/character_robot_cheer0.png');
     this.load.image('robot_cheer1', 'assets/robot/cheer/character_robot_cheer1.png');
     // しょんぼり
+    this.load.image('robot_sad0', 'assets/robot/sad/sad0.png');
     this.load.image('robot_sad1', 'assets/robot/sad/sad1.png');
     this.load.image('robot_sad2', 'assets/robot/sad/sad2.png');
-    this.load.image('robot_sad3', 'assets/robot/sad/sad3.png');
 
     // Items / Enemy / Tiles
     this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
     this.load.image('key_icon', 'assets/items/gatecard.png');
     this.load.image('weapon_icon', 'assets/weapon/blaster-a.png');
+    this.load.image('monsterA_idle0', 'assets/enemy/monster-a/idle/idle0.png');
     this.load.image('monsterA_idle1', 'assets/enemy/monster-a/idle/idle1.png');
-    this.load.image('monsterA_idle2', 'assets/enemy/monster-a/idle/idle2.png');
     this.load.image('floor_moon', 'assets/floor/moon.png');
 
     // Direction icons
@@ -465,22 +465,30 @@ playCutsceneThen(next, overridePath) {
    *  - 画面リサイズ時にレベルと背景を再構成
    */
   create() {
-    this.levels = this.levels || loadLevels(this);
     if (!Number.isFinite(this.missionIndex)) this.missionIndex = 0;
     const last = (this.levels?.length || 1) - 1;
     if (this.missionIndex < 0 || this.missionIndex > last) this.missionIndex = 0;
 
-    // ★★★ ここから置き換え：最初の一回だけ、ロード→アニメ→ミッションの順で実行
+    // ★ 画像は先に必ずロード→アニメ生成まで（ここではミッションを組まない）
     (async () => {
-      await ensureTextures(this, REQUIRED_CORE_KEYS); // 1) 必須画像ロード完了まで待つ
-      if (!this.sys.game.__hkqAnimsBuilt) {
-          createCoreAnimations(this);                     // 2) ロード後にアニメ生成
+      await ensureTextures(this, REQUIRED_CORE_KEYS);
+      if (!this.sys.game.__hkqAnimsBuilt) createCoreAnimations(this);
+      // すでに levels が注入済みならこの場で 1 回だけビルド
+      if (Array.isArray(this.levels) && this.levels.length) {
+        this.gotoMission(this.missionIndex | 0);
+        this.updateBackground?.();
       }
-      //createCoreAnimations(this);                     // 2) ロード後にアニメ生成
-      this.gotoMission(this.missionIndex | 0);        // 3) 1回だけミッション構築（内部で buildLevel(true)）
-      this.updateBackground?.();
     })();
-    // ★★★ ここまで
+
+    // ★ JSON 注入待ち（hkq-main.js が投げるイベントを一度だけ受け取る）
+    const onSetLevels = (e) => {
+      if (this._building) return; // 再入防止
+      this.levels = e?.detail?.levels || [];
+      this.missionIndex = Number.isFinite(e?.detail?.startIdx) ? (e.detail.startIdx|0) : 0;
+      this.gotoMission(this.missionIndex);
+      this.updateBackground?.();
+    };
+    document.addEventListener('hkq:set-levels', onSetLevels, { once:true });
 
     // Resize handling（連続 resize をデバウンス）
     this._lastSize = { w: this.scale.width, h: this.scale.height };
@@ -555,7 +563,7 @@ playCutsceneThen(next, overridePath) {
       frameRate: 6, repeat: -1
     });
     this.anims.create({ key: 'monsterA_idle',
-      frames: [{ key: 'monsterA_idle1' }, { key: 'monsterA_idle2' }],
+      frames: [{ key: 'monsterA_idle0' }, { key: 'monsterA_idle1' }],
       frameRate: 2, repeat: -1
     });
     this.anims.create({ key: 'robot_sad',
@@ -663,15 +671,17 @@ safePlay(spr, key, fallbackFrameKey) {
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
     this.goalSpr?.destroy();
 
-    if (!this.level.goalIcon) {
-      console.warn("【警告】goalIcon が定義されていません:", this.level.id);
-      return; // 画像を読み込まずにスキップ
-    }
-    const goalKey = this.level.goalIcon;
-    //const texKey = `goal:${goalKey}`;
-    const texKey   = goalKey;             // ← フルパスをキーにしてしまう
+    // 1) まず事前ロード済みのキーがあればそれを使う
+    let texKey = this.textures.exists('goal_png') ? 'goal_png' : null;
+    // 2) JSON側が指定されていればそれを使う（なければ既定パスへ）
+    const goalPath = this.level?.goalIcon || 'assets/floor/moon_base_goal.png';
+    if (!texKey) texKey = `goal:${goalPath}`;  // キー衝突回避のため接頭辞
+
+    // ゴール座標が外れていても動くように保険
+    this.goalCell.x = Phaser.Math.Clamp(this.goalCell.x, 0, this.gridW - 1);
+    this.goalCell.y = Phaser.Math.Clamp(this.goalCell.y, 0, this.gridH - 1);
     if (!this.textures.exists(texKey)) {
-      this.load.image(texKey, goalKey);
+      this.load.image(texKey, goalPath);
       this.load.once('complete', () => {
         this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), texKey)
           .setOrigin(0.5, 1)
@@ -796,10 +806,10 @@ safePlay(spr, key, fallbackFrameKey) {
         const cell = pickFreeCell();
         if (!cell) break;
         const pos = this.cellToXY(cell.x, cell.y);
-        const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'monsterA_idle1')
+        const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'monsterA_idle0')
           .setOrigin(0.5, 1).setDepth(8)
           .setDisplaySize(Math.floor(this._isoW * 1.2), Math.floor(this._isoH * 1.6))
-          this.safePlay(spr, 'monsterA_idle', 'monsterA_idle1');
+          this.safePlay(spr, 'monsterA_idle', 'monsterA_idle0');
         this.actorLayer.add(spr);
         (this.monsters || (this.monsters = [])).push({ type, cell, spr });
       }
@@ -1084,7 +1094,7 @@ safePlay(spr, key, fallbackFrameKey) {
           this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
         } else {
           // 失敗カットシーン
-          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad1');
+          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
           if (pathFail) {
             this.playFailCutscene(pathFail, () => {
               this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
