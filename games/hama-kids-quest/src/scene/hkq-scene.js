@@ -11,6 +11,108 @@ const ISO_ARROW = {
   left: 'arrow-sw', // ↙︎
 };
 
+// --- 必須テクスチャのマニフェスト（キー → 実ファイルパス） ---
+const TEXTURE_MANIFEST = {
+  // idle
+  'robot_idle0':  'assets/robot/idle/character_robot_idle0.png',
+  'robot_idle1':  'assets/robot/idle/character_robot_idle1.png',
+  // walk (0..7)
+  'robot_walk0':  'assets/robot/walk/character_robot_walk0.png',
+  'robot_walk1':  'assets/robot/walk/character_robot_walk1.png',
+  'robot_walk2':  'assets/robot/walk/character_robot_walk2.png',
+  'robot_walk3':  'assets/robot/walk/character_robot_walk3.png',
+  'robot_walk4':  'assets/robot/walk/character_robot_walk4.png',
+  'robot_walk5':  'assets/robot/walk/character_robot_walk5.png',
+  'robot_walk6':  'assets/robot/walk/character_robot_walk6.png',
+  'robot_walk7':  'assets/robot/walk/character_robot_walk7.png',
+  // cheer
+  'robot_cheer0': 'assets/robot/cheer/character_robot_cheer0.png',
+  'robot_cheer1': 'assets/robot/cheer/character_robot_cheer1.png',
+  // sad（ファイル名が 1 始まりなのでキーも 1..3 で合わせます）
+  'robot_sad1':   'assets/robot/sad/sad1.png',
+  'robot_sad2':   'assets/robot/sad/sad2.png',
+  'robot_sad3':   'assets/robot/sad/sad3.png',
+
+  // （任意）モンスターを使うならここに追加:
+  // 'monsterA_idle0': 'assets/monsterA/idle0.png',
+  // 'monsterA_idle1': 'assets/monsterA/idle1.png',
+};
+
+// このタイトルで“必ずロードしてから”アニメを作る必須キー
+const REQUIRED_CORE_KEYS = [
+  'robot_idle0','robot_idle1',
+  'robot_walk0','robot_walk1','robot_walk2','robot_walk3',
+  'robot_walk4','robot_walk5','robot_walk6','robot_walk7',
+  'robot_cheer0','robot_cheer1',
+  'robot_sad1','robot_sad2','robot_sad3',
+];
+
+// 未ロードキーを見つけてロード → 完了まで待つ
+async function ensureTextures(scene, keys) {
+  const miss = keys.filter(k => !scene.textures.exists(k));
+  if (miss.length === 0) return;
+
+  miss.forEach(k => {
+    const url = TEXTURE_MANIFEST[k];
+    if (!url) console.error('[assets] URL未定義', k);
+    else scene.load.image(k, url);
+  });
+
+  await new Promise((resolve) => {
+    scene.load.once('complete', resolve);
+    scene.load.once('loaderror', (f) => {
+      console.error('[assets] loaderror:', f?.key || f?.src || f);
+      // 必須の一部が失敗しても resolve はする（先で検証）
+    });
+    scene.load.start();
+  });
+
+  const still = keys.filter(k => !scene.textures.exists(k));
+  if (still.length) {
+    // 本当に必須が揃わなかったらここで止める/ログ出し
+    console.error('[assets] 必須テクスチャ未ロード:', still);
+    // throw new Error('必須テクスチャ未ロード'); // 必要なら例外で止める
+  }
+}
+
+function createCoreAnimations(scene) {
+  // 二重作成ガード
+  if (scene.sys.game.__hkqAnimsBuilt) return;
+  scene.sys.game.__hkqAnimsBuilt = true;
+
+  const F = (keys) => keys.map(k => ({ key: k }));
+
+  scene.anims.create({
+    key: 'robot_idle',
+    frames: F(['robot_idle0','robot_idle1']),
+    frameRate: 2, repeat: -1
+  });
+  scene.anims.create({
+    key: 'robot_walk',
+    frames: F(['robot_walk0','robot_walk1','robot_walk2','robot_walk3','robot_walk4','robot_walk5','robot_walk6','robot_walk7']),
+    frameRate: 10, repeat: -1
+  });
+  scene.anims.create({
+    key: 'robot_cheer',
+    frames: F(['robot_cheer0','robot_cheer1']),
+    frameRate: 6, repeat: -1
+  });
+  scene.anims.create({
+    key: 'robot_sad',
+    frames: F(['robot_sad1','robot_sad2','robot_sad3']),
+    frameRate: 6, repeat: -1
+  });
+
+  // 任意：モンスターは“存在すれば”作る（無ければスキップ）
+  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle1')) {
+    scene.anims.create({
+      key: 'monsterA_idle',
+      frames: F(['monsterA_idle0','monsterA_idle1']),
+      frameRate: 2, repeat: -1
+    });
+  }
+}
+
 export class HkqScene extends Phaser.Scene {
   /**
    * HkqScene
@@ -22,6 +124,8 @@ export class HkqScene extends Phaser.Scene {
     super('HkqScene');
     this._cutscenePlaying = false;
     this._inputLocked = false;
+    this._builtForMission = -1; // どのミッションを build 済みか
+    this._building = false;     // 再入防止
   }
 
   /**
@@ -41,26 +145,20 @@ export class HkqScene extends Phaser.Scene {
   }
   */
   gotoMission(idx = 0) {
-    const len = Array.isArray(this.levels) ? this.levels.length : 0;
-    if (!len) return;
-    idx = Math.min(Math.max(idx|0, 0), len - 1);
-    this.missionIndex = idx;
-
-    if (this._builtForMission === idx) {
-      // すでにこのミッションは build済み → ソフトリセットだけ（再buildしない）
-      this.softReset?.();
+    this.clearRunnerQueue();
+    const last = (this.levels?.length || 1) - 1;
+    const clamped = Phaser.Math.Clamp(idx|0, 0, last);
+    if (this._building) return;                 // 再入防止
+    if (this._builtForMission === clamped) {    // 同じ面なら再buildしない
+      this.updateBackground?.();
       return;
     }
-    if (this._building) return; // 再入防止
-
     this._building = true;
-    try {
-      this.buildLevel(true);
-      this.updateBackground?.();
-      this._builtForMission = idx;
-    } finally {
-      this._building = false;
-    }
+    this.missionIndex = clamped;
+    this.buildLevel(true);
+    this.updateBackground?.();
+    this._builtForMission = clamped;
+    this._building = false;
   }
 
   // ---- Lock helpers -------------------------------------------------------
@@ -367,35 +465,34 @@ playCutsceneThen(next, overridePath) {
    *  - 画面リサイズ時にレベルと背景を再構成
    */
   create() {
-    this.levels = loadLevels(this);
+    this.levels = this.levels || loadLevels(this);
     if (!Number.isFinite(this.missionIndex)) this.missionIndex = 0;
     const last = (this.levels?.length || 1) - 1;
     if (this.missionIndex < 0 || this.missionIndex > last) this.missionIndex = 0;
 
-    this.createAnimations();
-/*
-    this.buildLevel(true);
-    this.updateBackground();
-*/
-/* シーンが立ち上がった瞬間に buildLevel(true) を呼んでいるなら、
-  levels が注入済みのときだけ呼ぶ */
-  if (Array.isArray(this.levels) && this.levels.length) {
-    this.buildLevel(true);
-    this.updateBackground();
-  }
-      // Resize handling（連続 resize をデバウンス）
+    // ★★★ ここから置き換え：最初の一回だけ、ロード→アニメ→ミッションの順で実行
+    (async () => {
+      await ensureTextures(this, REQUIRED_CORE_KEYS); // 1) 必須画像ロード完了まで待つ
+      if (!this.sys.game.__hkqAnimsBuilt) {
+          createCoreAnimations(this);                     // 2) ロード後にアニメ生成
+      }
+      //createCoreAnimations(this);                     // 2) ロード後にアニメ生成
+      this.gotoMission(this.missionIndex | 0);        // 3) 1回だけミッション構築（内部で buildLevel(true)）
+      this.updateBackground?.();
+    })();
+    // ★★★ ここまで
+
+    // Resize handling（連続 resize をデバウンス）
     this._lastSize = { w: this.scale.width, h: this.scale.height };
     this._resizeTid = null;
     this.scale.on('resize', () => {
       const w = this.scale.width, h = this.scale.height;
       if (Math.abs(w - this._lastSize.w) < 8 && Math.abs(h - this._lastSize.h) < 8) return;
-        clearTimeout(this._resizeTid);
-        this._resizeTid = setTimeout(() => {
+      clearTimeout(this._resizeTid);
+      this._resizeTid = setTimeout(() => {
         this._lastSize = { w, h };
-        // レベル未注入のとき/すでに同ミッションのときは
-        // build せずレイアウトだけ調整
-//        this.buildLevel(false);
-       this.updateBackground?.();
+        // レベル再構築はしない（背景のみ調整）
+        this.updateBackground?.();
       }, 120);
     });
 
@@ -408,7 +505,7 @@ playCutsceneThen(next, overridePath) {
       const maxLife = getLifeCountFrom(level);
 
       sc.playFailCutscene(failPath, () => {
-        sc.buildLevel(true);  // restartMission がなければ buildLevel を使う
+        sc.buildLevel(true);  // リスタート時は buildLevel でOK（画像は既にロード済）
       });
       document.dispatchEvent(new CustomEvent('hkq:mission-start', { detail:{ level } }));
       document.dispatchEvent(new CustomEvent('hkq:life-changed',   { detail:{ value:maxLife } }));
@@ -416,6 +513,7 @@ playCutsceneThen(next, overridePath) {
       window.HKQ_LIFE     = maxLife;
     });
   }
+
 
   /**
    * showDirectionIcon(dirKey, cellX, cellY)
@@ -494,7 +592,7 @@ safePlay(spr, key, fallbackFrameKey) {
     console.debug('[DBG] buildLevel once:',
        { idx: this.missionIndex, id: this.levels?.[this.missionIndex]?.id });
 
-    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
+//    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
     this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
     const L = this.levels[this.missionIndex] || {};
     this.level = L;
