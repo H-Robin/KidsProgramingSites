@@ -136,14 +136,6 @@ export class HkqScene extends Phaser.Scene {
    *  - レベルを再構築（タイトル表示あり）
    * @param {number} idx
    */
-  /* 
-  gotoMission(idx = 0) {
-    this.clearRunnerQueue();   // ミッション開始時は必ずキューを空に
-    const last = (this.levels?.length || 1) - 1;
-    this.missionIndex = Phaser.Math.Clamp(idx|0, 0, last);
-    this.buildLevel(true);
-  }
-  */
   gotoMission(idx = 0) {
     this.clearRunnerQueue();
     const last = (this.levels?.length || 1) - 1;
@@ -239,7 +231,7 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('robot_sad2', 'assets/robot/sad/sad2.png');
 
     // Items / Enemy / Tiles
-    this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
+//    this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
     this.load.image('key_icon', 'assets/items/gatecard.png');
     this.load.image('weapon_icon', 'assets/weapon/blaster-a.png');
     this.load.image('monsterA_idle0', 'assets/enemy/monster-a/idle/idle0.png');
@@ -255,7 +247,6 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('bg_moon', 'assets/wallpaper/moon.png');
     // 設計図アイコン（新規）
     this.load.image('blueprint_icon', 'assets/items/blueprint1.png');
-    this.load.image('planned_goal', 'assets/floor/planedsite_goal.png');
     }
 
   // ---- Cutscenes (success / mid / fail) ----------------------------------
@@ -597,7 +588,7 @@ safePlay(spr, key, fallbackFrameKey) {
    * @param {boolean} showTitle - タイトル演出を表示するか
    */
   buildLevel(showTitle) {
-    console.debug('[DBG] buildLevel once:',
+    console.log('[DBG] buildLevel once:',
        { idx: this.missionIndex, id: this.levels?.[this.missionIndex]?.id });
 
 //    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
@@ -671,11 +662,12 @@ safePlay(spr, key, fallbackFrameKey) {
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
     this.goalSpr?.destroy();
 
-    // 1) まず事前ロード済みのキーがあればそれを使う
-    let texKey = this.textures.exists('goal_png') ? 'goal_png' : null;
-    // 2) JSON側が指定されていればそれを使う（なければ既定パスへ）
-    const goalPath = this.level?.goalIcon || 'assets/floor/moon_base_goal.png';
-    if (!texKey) texKey = `goal:${goalPath}`;  // キー衝突回避のため接頭辞
+
+    // JSON側が指定されていればそれを使う
+    const goalPath = this.level?.goalIcon;
+    // 専用テクスチャキー（キーに '?v=' は付けない）
+    const texKey = `goal:${goalPath}`;
+    console.debug('[DBG] goalPath=', goalPath, ' texKey=', texKey, ' level.id=', this.level?.id);
 
     // ゴール座標が外れていても動くように保険
     this.goalCell.x = Phaser.Math.Clamp(this.goalCell.x, 0, this.gridW - 1);
