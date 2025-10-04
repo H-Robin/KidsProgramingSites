@@ -1,4 +1,5 @@
 // Warp helpers extracted from hkq-scene.js
+import { HKQ_EVENTS } from '../../common/events.js';
 
 export function tryWarpAt(scene, x, y) {
   const now = (performance && performance.now) ? performance.now() : Date.now();
@@ -77,11 +78,10 @@ export function _doWarpTo(scene, dx, dy) {
           scene._cutscenePlaying = false;
           scene.unlockGame?.();
           scene.safePlay?.(scene.robotSpr, 'robot_idle', 'robot_idle0');
-          document.dispatchEvent(new CustomEvent('hkq:tick'));
+          document.dispatchEvent(new CustomEvent(HKQ_EVENTS.TICK));
         }
       });
     }
   });
   return true;
 }
-

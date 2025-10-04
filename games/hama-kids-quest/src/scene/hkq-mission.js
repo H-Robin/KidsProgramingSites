@@ -1,4 +1,5 @@
 // hkq-mission.js — Mission UI / conditions evaluator / HUD sync
+import { HKQ_EVENTS } from '../common/events.js';
 
 /**
  * DOM 準備完了を待ってから関数を実行（多重呼び出しでも安全）
@@ -178,12 +179,12 @@ export class Mission {
       }
     };
 
-    document.addEventListener('hkq:mission-start', this._handlers.start);
-    document.addEventListener('hkq:move',          this._handlers.move);
-    document.addEventListener('hkq:item-pick',     this._handlers.pick);
-    document.addEventListener('hkq:enemy-down',    this._handlers.down);
-    document.addEventListener('hkq:reach-goal',    this._handlers.reach);
-    document.addEventListener('hkq:life-changed',  this._handlers.life);
+    document.addEventListener(HKQ_EVENTS.MISSION_START, this._handlers.start);
+    document.addEventListener(HKQ_EVENTS.MOVE,          this._handlers.move);
+    document.addEventListener(HKQ_EVENTS.ITEM_PICK,     this._handlers.pick);
+    document.addEventListener(HKQ_EVENTS.ENEMY_DOWN,    this._handlers.down);
+    document.addEventListener(HKQ_EVENTS.REACH_GOAL,    this._handlers.reach);
+    document.addEventListener(HKQ_EVENTS.LIFE_CHANGED,  this._handlers.life);
   }
 
   /**
@@ -254,12 +255,12 @@ export class Mission {
    */
   dispose(){
     if (!this._handlers) return;
-    document.removeEventListener('hkq:mission-start', this._handlers.start);
-    document.removeEventListener('hkq:move',          this._handlers.move);
-    document.removeEventListener('hkq:item-pick',     this._handlers.pick);
-    document.removeEventListener('hkq:enemy-down',    this._handlers.down);
-    document.removeEventListener('hkq:reach-goal',    this._handlers.reach);
-    document.removeEventListener('hkq:life-changed',  this._handlers.life);
+    document.removeEventListener(HKQ_EVENTS.MISSION_START, this._handlers.start);
+    document.removeEventListener(HKQ_EVENTS.MOVE,          this._handlers.move);
+    document.removeEventListener(HKQ_EVENTS.ITEM_PICK,     this._handlers.pick);
+    document.removeEventListener(HKQ_EVENTS.ENEMY_DOWN,    this._handlers.down);
+    document.removeEventListener(HKQ_EVENTS.REACH_GOAL,    this._handlers.reach);
+    document.removeEventListener(HKQ_EVENTS.LIFE_CHANGED,  this._handlers.life);
     this._handlers = null;
   }
 
@@ -371,7 +372,7 @@ export class Mission {
     `).join('');
 
     if (done && fireClear){
-      document.dispatchEvent(new CustomEvent('hkq:mission-cleared'));
+      document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MISSION_CLEARED));
     }
   }
 

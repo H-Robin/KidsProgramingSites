@@ -1,4 +1,5 @@
 // Cutscene helpers extracted from hkq-scene.js
+import { HKQ_EVENTS } from '../../common/events.js';
 
 /** 条件1件を見つける */
 export function getCondition(scene, predicate) {
@@ -46,7 +47,7 @@ export function playCutsceneThen(scene, next, overridePath) {
 
     scene._cutscenePlaying = true;
     scene.lockGame?.();
-    document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LOCK, { detail: { reason: 'cutscene' } }));
 
     scene.tweens.add({
       targets: node, alpha: 1, duration: 500, ease: 'quad.out',
@@ -58,7 +59,7 @@ export function playCutsceneThen(scene, next, overridePath) {
               node.destroy();
               scene._cutscenePlaying = false;
               scene.unlockGame?.();
-              document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
+              document.dispatchEvent(new CustomEvent(HKQ_EVENTS.UNLOCK, { detail: { reason: 'cutscene' } }));
               next?.();
             }
           });
@@ -91,7 +92,7 @@ export function playMidCutscene(scene, path, next) {
     // 開始で lock
     scene._cutscenePlaying = true;
     scene.lockGame?.();
-    document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LOCK, { detail: { reason: 'cutscene' } }));
 
     scene.tweens.add({
       targets: node, alpha: 1, duration: 500, ease: 'quad.out',
@@ -104,7 +105,7 @@ export function playMidCutscene(scene, path, next) {
               // 終了で unlock
               scene._cutscenePlaying = false;
               scene.unlockGame?.();
-              document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
+              document.dispatchEvent(new CustomEvent(HKQ_EVENTS.UNLOCK, { detail: { reason: 'cutscene' } }));
               next?.();
             }
           });
@@ -136,7 +137,7 @@ export function playFailCutscene(scene, path, next) {
     // 開始で lock
     scene._cutscenePlaying = true;
     scene.lockGame?.();
-    document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LOCK, { detail: { reason: 'cutscene' } }));
 
     scene.tweens.add({
       targets: node, alpha: 1, duration: 500, ease: 'quad.out',
@@ -151,7 +152,7 @@ export function playFailCutscene(scene, path, next) {
               // 終了で unlock
               scene._cutscenePlaying = false;
               scene.unlockGame?.();
-              document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
+              document.dispatchEvent(new CustomEvent(HKQ_EVENTS.UNLOCK, { detail: { reason: 'cutscene' } }));
               next?.();
             }
           });
@@ -163,4 +164,3 @@ export function playFailCutscene(scene, path, next) {
   if (scene.textures.exists(texKey)) startShow();
   else { scene.load.once('complete', startShow); scene.load.image(texKey, path); scene.load.start(); }
 }
-

@@ -9,6 +9,7 @@ import * as Warp from './modules/warp.js';
 import * as Builder from './modules/builder.js';
 import * as UI from './modules/ui.js';
 import { createCoreAnimations } from './modules/animations.js';
+import { HKQ_EVENTS } from '../common/events.js';
 
 const ISO_ARROW = {
   up: 'arrow-nw',   // ↖︎
@@ -315,7 +316,7 @@ export class HkqScene extends Phaser.Scene {
       this.gotoMission(this.missionIndex);
       this.updateBackground?.();
     };
-    document.addEventListener('hkq:set-levels', onSetLevels, { once:true });
+    document.addEventListener(HKQ_EVENTS.SET_LEVELS, onSetLevels, { once:true });
 
     // Resize handling（連続 resize をデバウンス）
     this._lastSize = { w: this.scale.width, h: this.scale.height };
@@ -332,7 +333,7 @@ export class HkqScene extends Phaser.Scene {
     });
 
     const sc = this; // Sceneインスタンスをキャプチャ
-    document.addEventListener('hkq:life-zero', () => {
+    document.addEventListener(HKQ_EVENTS.LIFE_ZERO, () => {
       const level = sc.levels?.[sc.missionIndex ?? 0] || sc.level;
       const conds = level?.clear?.conditions || [];
       const lifeCond = conds.find(c => (c.type === 'life0' || c.id === 'life_zero'));
@@ -342,8 +343,8 @@ export class HkqScene extends Phaser.Scene {
       sc.playFailCutscene(failPath, () => {
         sc.buildLevel(true);  // リスタート時は buildLevel でOK（画像は既にロード済）
       });
-      document.dispatchEvent(new CustomEvent('hkq:mission-start', { detail:{ level } }));
-      document.dispatchEvent(new CustomEvent('hkq:life-changed',   { detail:{ value:maxLife } }));
+      document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MISSION_START, { detail:{ level } }));
+      document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIFE_CHANGED,   { detail:{ value:maxLife } }));
       window.HKQ_LIFE_MAX = maxLife;
       window.HKQ_LIFE     = maxLife;
     });
@@ -521,7 +522,7 @@ export class HkqScene extends Phaser.Scene {
     this.repeatInnerCap = Number.isFinite(L.repeatInnerCap) ? L.repeatInnerCap : 3;
 
     // UIへ通知（レベル切り替え時）
-    document.dispatchEvent(new CustomEvent('hkq:limits', {
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIMITS, {
       detail: { cmdCap: this.cmdCap, repeatInnerCap: this.repeatInnerCap }
     }));
 
@@ -828,7 +829,7 @@ export class HkqScene extends Phaser.Scene {
    *  - 現在のミッション番号とレベル定義を DOM へ通知（UI/外部側がフック）
    */
   emitMissionStart() {
-    document.dispatchEvent(new CustomEvent('hkq:mission-start', {
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MISSION_START, {
       detail: { mission: this.missionIndex, level: this.level }
     }));
   }

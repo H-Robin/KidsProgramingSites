@@ -1,4 +1,5 @@
 // Interaction & goal helpers extracted from hkq-scene.js
+import { HKQ_EVENTS } from '../../common/events.js';
 
 export function isAtGoal(scene) {
   if (!scene.goalCell || !scene.robotCell) return false;
@@ -15,7 +16,7 @@ export function isAtGoal(scene) {
 export function handleGoalReached(scene) {
   scene._cleared = true;
   scene.safePlay?.(scene.robotSpr, 'robot_cheer', 'robot_cheer0');
-  document.dispatchEvent(new CustomEvent('hkq:mission-cleared', {
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MISSION_CLEARED, {
     detail: { mission: scene.missionIndex }
   }));
   scene.time.delayedCall(900, () => {
@@ -67,7 +68,7 @@ export function onTick(scene, op) {
       targets: scene.robotSpr,
       x: scene.snap?.(p1.x), y: scene.snap?.(p1.y),
       duration: 120, yoyo: true, repeat: 0, ease: 'quad.out',
-      onComplete: () => document.dispatchEvent(new CustomEvent('hkq:tick'))
+      onComplete: () => document.dispatchEvent(new CustomEvent(HKQ_EVENTS.TICK))
     });
     return;
   }
@@ -75,7 +76,7 @@ export function onTick(scene, op) {
   // ここで初めてセルを更新（通行可の場合）
   scene.robotCell = { x: nx, y: ny };
 
-  document.dispatchEvent(new CustomEvent('hkq:move', { detail: { pos: { x: nx, y: ny } } }));
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MOVE, { detail: { pos: { x: nx, y: ny } } }));
 
   scene.showDirectionIcon?.(op, nx, ny);
 
@@ -96,7 +97,7 @@ export function onTick(scene, op) {
         try { scene.weaponSpr?.destroy(); } catch(_) {}
         scene.weaponSpr = null;
         scene.renderItemBox?.();
-        document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'weapon' } }));
+        document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ITEM_PICK, { detail: { id: 'weapon' } }));
       }
 
       // 2) 敵
@@ -110,16 +111,16 @@ export function onTick(scene, op) {
             scene.playMidCutscene?.(path, () => {
               try { enemy.spr.destroy(); } catch(_) {}
               scene.monsters = scene.monsters.filter(m => m !== enemy);
-              document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail: { type: 'monster-a' } }));
+              document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ENEMY_DOWN, { detail: { type: 'monster-a' } }));
 
               if (!scene.inventory.key && !scene._hasKeyPickup) {
                 scene.inventory.key = true;
                 scene.renderItemBox?.();
-                document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
+                document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ITEM_PICK, { detail:{ id:'key' }}));
               }
               scene.refreshGates?.();
               scene.safePlay?.(scene.robotSpr, 'robot_idle', 'robot_idle0');
-              document.dispatchEvent(new CustomEvent('hkq:tick'));
+              document.dispatchEvent(new CustomEvent(HKQ_EVENTS.TICK));
             });
           } else {
             try { enemy.spr.destroy(); } catch(_) {}
@@ -149,7 +150,7 @@ export function onTick(scene, op) {
             (scene.inventory.blueprint|0) + 1,
             scene.blueprintTotal|0
           );
-          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'blueprint' } }));
+          document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ITEM_PICK, { detail: { id: 'blueprint' } }));
 
           if ((scene.inventory.blueprint|0) >= (scene.blueprintTotal|0) && scene.blueprintTotal > 0) {
             const condBP = scene.getCondition?.(c => c.id === 'collect_blueprints');
@@ -157,7 +158,7 @@ export function onTick(scene, op) {
             if (pathBP) {
               scene.playMidCutscene?.(pathBP, () => {
                 scene.safePlay?.(scene.robotSpr, 'robot_idle', 'robot_idle0');
-                document.dispatchEvent(new CustomEvent('hkq:tick'));
+                document.dispatchEvent(new CustomEvent(HKQ_EVENTS.TICK));
               });
               return;
             }
@@ -170,7 +171,7 @@ export function onTick(scene, op) {
         try { scene.keySpr?.destroy(); } catch(_) {}
         scene.keySpr = null;
         scene.renderItemBox?.();
-        document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'key' } }));
+        document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ITEM_PICK, { detail: { id: 'key' } }));
       }
       scene.refreshGates?.();
       // 3.5) ポータルキー（ワープ用）— 複数対応
@@ -181,7 +182,7 @@ export function onTick(scene, op) {
           try { scene.portalKeys[hit].spr?.destroy(); } catch(_) {}
           scene.portalKeys.splice(hit, 1);
           scene.renderItemBox?.();
-          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'portalkey' } }));
+          document.dispatchEvent(new CustomEvent(HKQ_EVENTS.ITEM_PICK, { detail: { id: 'portalkey' } }));
         }
       }
       // 3.9) ポータル（portalgate）転送
@@ -205,7 +206,7 @@ export function onTick(scene, op) {
         });
         console.log("【DEBUG】evaluate result:", result);
         if (result.done) {
-          document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
+          document.dispatchEvent(new CustomEvent(HKQ_EVENTS.REACH_GOAL, { detail: { pos: { x: cx, y: cy } } }));
           scene.playCutsceneThen?.(() => scene.handleGoalReached?.(), pathSuccess);
         } else {
           scene.safePlay?.(scene.robotSpr, 'robot_sad', 'robot_sad0');
@@ -221,13 +222,12 @@ export function onTick(scene, op) {
       }
       // ライフ0
       if (Number(window.HKQ_LIFE ?? 3) <= 0){
-        document.dispatchEvent(new CustomEvent('hkq:life-zero'));
+        document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIFE_ZERO));
         return;
       }
       // 5) 通常
       scene.safePlay?.(scene.robotSpr, 'robot_idle', 'robot_idle0');
-      document.dispatchEvent(new CustomEvent('hkq:tick'));
+      document.dispatchEvent(new CustomEvent(HKQ_EVENTS.TICK));
     }
   });
 }
-

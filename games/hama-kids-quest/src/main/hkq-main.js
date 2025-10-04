@@ -1,4 +1,5 @@
 // hkq-main.js — formal version
+import { HKQ_EVENTS } from '../common/events.js';
 import { createPalette } from "../common/ui/palette.js";
 import { Interpreter } from "../common/engine/interpreter.js";
 import { HkqScene } from "../scene/hkq-scene.js";
@@ -66,7 +67,7 @@ window.HKQ_CMD_LIMIT = initCommandLimitUI({
 });
 
 // ★ JSONのcmdCapを反映する（hkq-scene.js が投げるイベントを受信）
-document.addEventListener('hkq:limits', (e) => {
+document.addEventListener(HKQ_EVENTS.LIMITS, (e) => {
   const cap = Number(e?.detail?.cmdCap);
   if (!Number.isFinite(cap)) return;
   // 内部cap更新
@@ -140,12 +141,12 @@ window.addEventListener("load", async () => {
     ? getStartMissionFromHash() : 0;
 
   // ★ シーンにはイベントで渡す（シーン側が受けて 1 回だけビルド）
-  document.dispatchEvent(new CustomEvent('hkq:set-levels', {
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.SET_LEVELS, {
     detail: { levels, startIdx }
   }));
 
   // カテゴリ完了 → マップへ戻る処理は現状どおり
-  document.addEventListener("hkq:mission-cleared", () => {
+  document.addEventListener(HKQ_EVENTS.MISSION_CLEARED, () => {
     if (window.currentMissionIndex >= window.totalMissions - 1) {
       location.href = "html/hkq-map.html";
     }
@@ -415,7 +416,7 @@ programList.addEventListener("click", dispatchOnce(onProgramTap), { passive: fal
 // -------------------------------
 // ミッション開始時の初期ライフ設定（JSON基準）
 // -------------------------------
-document.addEventListener('hkq:mission-start', (e)=>{
+document.addEventListener(HKQ_EVENTS.MISSION_START, (e)=>{
   const level = e?.detail?.level;
 
   // JSONの life0 条件から count を読み取る
@@ -449,7 +450,7 @@ runBtn?.addEventListener("click", () => {
 
   if (newLife === 0){
     // ライフ切れ → onTick側が参照できるようイベント通知
-    document.dispatchEvent(new CustomEvent('hkq:life-zero'));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIFE_ZERO));
     return; // 実行しない
   }
   if (document.body.classList.contains("ui-locked")) return;
@@ -480,7 +481,7 @@ exitBtn?.addEventListener("click", () => {
 const clearBtn = document.getElementById("btn-clear-commands");
   clearBtn?.addEventListener("click", () => {
     try { window.clearRunnerQueue?.(); } catch(_) {}
-    document.dispatchEvent(new CustomEvent("hkq:commands-cleared"));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.COMMANDS_CLEARED));
 });
 /**
  * パレット押下処理
@@ -544,8 +545,8 @@ function onPalettePress(ev) {
  * 概要:
  *  - カットシーン開始/終了などで UI を無効/有効化
  */
-document.addEventListener("hkq:lock", () => document.body.classList.add("ui-locked"));
-document.addEventListener("hkq:unlock", () => document.body.classList.remove("ui-locked"));
+document.addEventListener(HKQ_EVENTS.LOCK, () => document.body.classList.add("ui-locked"));
+document.addEventListener(HKQ_EVENTS.UNLOCK, () => document.body.classList.remove("ui-locked"));
 
 /* =========================
   Runner 自然停止検知
@@ -553,7 +554,7 @@ document.addEventListener("hkq:unlock", () => document.body.classList.remove("ui
   - それ以外で停止したらコマンドをクリア
    ========================= */
 let HKQ_LAST_GOAL_TS = 0;
-document.addEventListener("hkq:reach-goal", () => {
+document.addEventListener(HKQ_EVENTS.REACH_GOAL, () => {
   HKQ_LAST_GOAL_TS = Date.now();
   console.log("【DEBUG】hkq:reach-goal event → ゴール成功マーク");
 });
@@ -597,7 +598,7 @@ async function watchRunnerIdleAndClear(scene, { timeoutMs = 4000 } = {}) {
 
   // ここでUIやHUDの最終同期を必ず実行（落ちても止まらないよう try/catch）
   try {
-    document.dispatchEvent(new CustomEvent('hkq:mission-sync-ui'));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.MISSION_SYNC_UI));
   } catch(e){ console.warn('watchRunnerIdleAndClear: sync-ui failed', e); }
 
   __HKQ_DBG_LOG('watchRunnerIdleAndClear: EXIT');
@@ -625,7 +626,7 @@ function getLifeCountFrom(level){
  * @returns {void}
  */
 function syncLifeToMission(value){
-  document.dispatchEvent(new CustomEvent('hkq:life-changed', { detail:{ value } }));
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIFE_CHANGED, { detail:{ value } }));
 }
 
 /**
@@ -665,7 +666,7 @@ function setupClearCommandsButton(){
   btn.addEventListener('click', (ev) => {
     ev.preventDefault(); ev.stopPropagation();
     try { window.clearRunnerQueue?.(); } catch(_) {}
-    document.dispatchEvent(new CustomEvent('hkq:commands-cleared'));
+    document.dispatchEvent(new CustomEvent(HKQ_EVENTS.COMMANDS_CLEARED));
     // 軽いフィードバック
     btn.disabled = true;
     setTimeout(() => { btn.disabled = false; }, 180);

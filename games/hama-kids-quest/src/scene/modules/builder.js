@@ -2,6 +2,7 @@
 import { buildTileLayer } from '../../render/tilemap-renderer.js';
 import { pickGoalFromSpec } from '../../data/level-loader.js';
 import { fieldSize } from '../../render/iso-math.js';
+import { HKQ_EVENTS } from '../../common/events.js';
 
 export function buildLevel(scene, showTitle) {
   console.log('[DBG] buildLevel once:', { idx: scene.missionIndex, id: scene.levels?.[scene.missionIndex]?.id });
@@ -55,7 +56,7 @@ export function buildLevel(scene, showTitle) {
   }
 
   // cmd上限をUIへ通知（hkq-main.js 側で受信）
-  document.dispatchEvent(new CustomEvent('hkq:limits', {
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.LIMITS, {
     detail: { cmdCap: scene.cmdCap, repeatInnerCap: scene.repeatInnerCap }
   }));
 

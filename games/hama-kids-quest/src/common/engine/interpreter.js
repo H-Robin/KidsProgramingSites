@@ -1,4 +1,5 @@
 // Interpreter — data-op 優先で Main を読み取り、repeatブロックを展開
+import { HKQ_EVENTS } from '../events.js';
 export class Runner {
   constructor(scene){
     this.scene = scene;
@@ -7,8 +8,8 @@ export class Runner {
     this._bindLockEvents();
   }
   _bindLockEvents(){
-    document.addEventListener('hkq:lock',   () => { this.paused = true;  });
-    document.addEventListener('hkq:unlock', () => {
+    document.addEventListener(HKQ_EVENTS.LOCK,   () => { this.paused = true;  });
+    document.addEventListener(HKQ_EVENTS.UNLOCK, () => {
       if (!this.paused) return;
       this.paused = false;
       this.tick(); // 再開時に次のコマンドを流す
@@ -41,11 +42,11 @@ export class Interpreter {
   }
 
   _bindLockEvents(){
-    document.addEventListener('hkq:lock',   () => {
+    document.addEventListener(HKQ_EVENTS.LOCK,   () => {
       this._lockDepth++;
       this._applyPause(true);
     });
-    document.addEventListener('hkq:unlock', () => {
+    document.addEventListener(HKQ_EVENTS.UNLOCK, () => {
       if (this._lockDepth > 0) this._lockDepth--;
       if (this._lockDepth === 0) this._applyPause(false);
     });
