@@ -2,6 +2,7 @@
 export const HKQ_EVENTS = Object.freeze({
   LIMITS: 'hkq:limits',
   SET_LEVELS: 'hkq:set-levels',
+  SCENE_READY: 'hkq:scene-ready',
   MISSION_CLEARED: 'hkq:mission-cleared',
   MISSION_START: 'hkq:mission-start',
   LIFE_ZERO: 'hkq:life-zero',
@@ -16,4 +17,3 @@ export const HKQ_EVENTS = Object.freeze({
   ENEMY_DOWN: 'hkq:enemy-down',
   TICK: 'hkq:tick',
 });
-

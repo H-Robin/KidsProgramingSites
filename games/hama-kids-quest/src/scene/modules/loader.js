@@ -1,5 +1,6 @@
 // Loader utilities centralization
 import { TEXTURE_MANIFEST } from '../../main/config.js';
+import { createCoreAnimations } from './animations.js';
 export { TEXTURE_MANIFEST } from '../../main/config.js';
 
 // Keys that should be present before building core animations
@@ -41,5 +42,18 @@ export async function ensureTextures(scene, keys) {
   const still = keys.filter(k => !scene.textures.exists(k));
   if (still.length) {
     console.error('[assets] 必須テクスチャ未ロード:', still);
+  }
+}
+
+/**
+ * Ensure core textures are loaded, then build core animations once.
+ * Returns a Promise that resolves when ready to create sprites/animations.
+ * @param {Phaser.Scene} scene
+ * @returns {Promise<void>}
+ */
+export async function ensureCoreReady(scene) {
+  await ensureTextures(scene, REQUIRED_CORE_KEYS);
+  if (!scene.sys.game.__hkqAnimsBuilt) {
+    createCoreAnimations(scene);
   }
 }

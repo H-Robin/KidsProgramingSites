@@ -1,5 +1,11 @@
 // Central configuration for data→display mappings
-
+// ============================================================================
+//  ### config.js
+//  概要 : データキーと実リソースのマッピングを一元管理。
+//  詳細 : Phaserローダやゲームロジックはキーを介してアクセスし、
+//         実際のファイルパスはここでのみ定義・変更する。
+//  exports: LEVEL_JSON_BY_TILE, TEXTURE_MANIFEST, MISSION_ICON_MAP
+// ============================================================================
 // Map tile key → levels JSON path
 export const LEVEL_JSON_BY_TILE = Object.freeze({
   "moonland":    "assets/data/levels-tutorial2.json",

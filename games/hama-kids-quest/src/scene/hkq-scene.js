@@ -9,7 +9,7 @@ import * as Warp from './modules/warp.js';
 import * as Builder from './modules/builder.js';
 import * as UI from './modules/ui.js';
 import { createCoreAnimations } from './modules/animations.js';
-import { ensureTextures, REQUIRED_CORE_KEYS } from './modules/loader.js';
+import { ensureCoreReady } from './modules/loader.js';
 import { HKQ_EVENTS } from '../common/events.js';
 
 const ISO_ARROW = {
@@ -236,10 +236,11 @@ export class HkqScene extends Phaser.Scene {
     const last = (this.levels?.length || 1) - 1;
     if (this.missionIndex < 0 || this.missionIndex > last) this.missionIndex = 0;
 
-    // ★ 画像は先に必ずロード→アニメ生成まで（ここではミッションを組まない）
+    // ★ コアアセット読み込み → アニメ生成完了を待つ（Promise）
     (async () => {
-      await ensureTextures(this, REQUIRED_CORE_KEYS);
-      if (!this.sys.game.__hkqAnimsBuilt) createCoreAnimations(this);
+      await ensureCoreReady(this);
+      // scene-ready を通知（UI/メインがフック可能）
+      document.dispatchEvent(new CustomEvent(HKQ_EVENTS.SCENE_READY, { detail: { key: this.scene.key } }));
       // すでに levels が注入済みならこの場で 1 回だけビルド
       if (Array.isArray(this.levels) && this.levels.length) {
         this.gotoMission(this.missionIndex | 0);

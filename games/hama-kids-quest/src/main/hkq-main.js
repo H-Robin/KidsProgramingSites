@@ -140,10 +140,15 @@ window.addEventListener("load", async () => {
   const startIdx = (typeof getStartMissionFromHash === 'function')
     ? getStartMissionFromHash() : 0;
 
-  // ★ シーンにはイベントで渡す（シーン側が受けて 1 回だけビルド）
-  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.SET_LEVELS, {
-    detail: { levels, startIdx }
-  }));
+  // ★ シーン準備完了（scene-ready）を待ってから JSON を渡す
+  await new Promise((resolve) => {
+    // 既に Scene が起動し ready 済みなら短絡（1フレーム後でもOK）
+    const handler = () => resolve();
+    document.addEventListener(HKQ_EVENTS.SCENE_READY, handler, { once: true });
+    // タイムアウト保険（2秒）
+    setTimeout(resolve, 2000);
+  });
+  document.dispatchEvent(new CustomEvent(HKQ_EVENTS.SET_LEVELS, { detail: { levels, startIdx } }));
 
   // カテゴリ完了 → マップへ戻る処理は現状どおり
   document.addEventListener(HKQ_EVENTS.MISSION_CLEARED, () => {
