@@ -142,6 +142,7 @@ window.addEventListener("load", async () => {
       location.href = "html/hkq-map.html";
     }
   });
+  setupClearCommandsButton();s
 });
 
 /*
@@ -461,7 +462,11 @@ exitBtn?.addEventListener("click", () => {
   window.HKQ_CMD_LIMIT?.refreshCapUI?.();
   location.href = "html/hkq-map.html";  // ★ マップページへ遷移
 });
-
+const clearBtn = document.getElementById("btn-clear-commands");
+  clearBtn?.addEventListener("click", () => {
+    try { window.clearRunnerQueue?.(); } catch(_) {}
+    document.dispatchEvent(new CustomEvent("hkq:commands-cleared"));
+});
 /**
  * onPalettePress(ev)
  * 役割:
@@ -587,4 +592,44 @@ function getLifeCountFrom(level){
 // HUD（Missionパネル）のライフ表示を更新
 function syncLifeToMission(value){
   document.dispatchEvent(new CustomEvent('hkq:life-changed', { detail:{ value } }));
+}
+
+function setupClearCommandsButton(){
+  // 二重生成ガード
+  if (document.getElementById('btn-clear-commands')) return;
+
+  // 既存の実行/リスタートボタンの親要素を優先候補に
+  const runBtn     = document.getElementById('btn-run') || document.getElementById('btn-exec');
+  const restartBtn = document.getElementById('btn-restart') || document.getElementById('btn-reset');
+  const anchor     = (runBtn && runBtn.parentElement)
+                  || (restartBtn && restartBtn.parentElement)
+                  || document.body; // 最悪 body に追加
+
+  // ボタン作成
+  const btn = document.createElement('button');
+  btn.id = 'btn-clear-commands';
+  btn.type = 'button';
+  btn.className = (runBtn?.className) ? runBtn.className : 'hkq-btn';
+  btn.setAttribute('aria-label', 'コマンドクリア');
+  btn.title = 'コマンドクリア (コマンドキューを空にします)';
+  btn.textContent = 'コマンドクリア';
+
+  // できれば run の直後→ダメなら restart の直後→最後に追加
+  if (runBtn && runBtn.nextSibling) {
+    anchor.insertBefore(btn, runBtn.nextSibling);
+  } else if (restartBtn && restartBtn.nextSibling) {
+    anchor.insertBefore(btn, restartBtn.nextSibling);
+  } else {
+    anchor.appendChild(btn);
+  }
+
+  // 動作：コマンドキューを空にして通知
+  btn.addEventListener('click', (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    try { window.clearRunnerQueue?.(); } catch(_) {}
+    document.dispatchEvent(new CustomEvent('hkq:commands-cleared'));
+    // 軽いフィードバック
+    btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; }, 180);
+  });
 }

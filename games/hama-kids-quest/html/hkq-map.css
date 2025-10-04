@@ -47,7 +47,7 @@ body{
 .cell[data-tile="route-dev"]{ background-image: url("../assets/floor/route-dev.png");}
 .cell[data-tile="kids-dev1"]{ background-image: url("../assets/floor/route-kids-dev.png");}
 .cell[data-tile="kids-dev2"]{ background-image: url("../assets/floor/route-kids-dev2.png");}
-
+.cell[data-tile="kids-dev3"]{ background-image: url("../assets/floor/route-kids-dev3.png");}
 .title {
   font-size: clamp(2rem, 4vw, 3rem);  /* 大きめで可変 */
   font-weight: 900;

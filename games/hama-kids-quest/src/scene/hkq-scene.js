@@ -1152,6 +1152,8 @@ export class HkqScene extends Phaser.Scene {
                   this.renderItemBox();
                   document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
                 }
+                // キー取得時点で、全ゲートを「開いた見た目」に更新
+                this.refreshGates?.();
                 this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
                 document.dispatchEvent(new CustomEvent('hkq:tick'));
               });
@@ -1212,7 +1214,8 @@ export class HkqScene extends Phaser.Scene {
           this.renderItemBox();
           document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'key' } }));
         }
-
+        // キー取得: 全ゲートのテクスチャを opened に
+        this.refreshGates?.();
         // 3.5) ポータルキー（ワープ用）— 複数対応
         if (this.portalKeys?.length) {
           const hit = this.portalKeys.findIndex(k => k.cell.x === cx && k.cell.y === cy);
