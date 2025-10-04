@@ -115,5 +115,103 @@
         },
         "cmdCap": 8,
         "repeatInnerCap": 3
+    },
+    {
+        "id": "ROUTE-KIDS-Ya",
+        "gridW": 5,
+        "gridH": 5,
+        "robot": { "x": 0, "y": 4, "dir": 1 },
+        "goal":  { "x": 4, "y": 0 },
+        "goalIcon": "assets/floor/moon-base2.png",
+        "obstacles": [
+            { "x": 1, "y": 4, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 2, "type": "gate", "pass": "need_item", "item": "key" },
+            { "x": 1, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 0, "type": "rock", "pass": "never" }
+        ],
+        "pickups": [
+            { "type": "key",       "x": 3, "y": 2 }
+        ],
+        "clear": {
+            "logic": "AND",
+            "conditions": [
+                {
+                    "id": "reach_goal",
+                    "type": "reach",
+                    "target": "lunar_base",
+                    "requires": ["key"],
+                    "cutscenes":{
+                    "success":"assets/cutscene/mission-success1.png",
+                    "fail":"assets/cutscene/mission-failed2.png"
+                    },
+                    "text": "ポータルキーでワープゲートを抜け、月面基地へ向かう"
+                },
+                        {
+                "id": "life_zero",
+                "type": "life0",
+                "count": 5,
+                "cutscenes": {
+                    "fail": "assets/cutscene/mission-failed3.png"
+                },
+                "text": "エネルギーが0にならない"
+                }
+            ]
+        },
+        "cmdCap": 8,
+        "repeatInnerCap": 3
+    },
+       {
+        "id": "ROUTE-KIDS-Yu",
+        "gridW": 5,
+        "gridH": 5,
+        "robot": { "x": 0, "y": 4, "dir": 1 },
+        "goal":  { "x": 3, "y": 0 },
+        "goalIcon": "assets/floor/moon-base2.png",
+        "obstacles": [
+            { "x": 0, "y": 3, "type": "wall", "pass": "never" },
+            { "x": 0, "y": 2, "type": "rock", "pass": "never" },
+            { "x": 0, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 1, "y": 1, "type": "gate", "pass": "need_item", "item": "key" },
+            { "x": 1, "y": 0, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 2, "type": "wall", "pass": "never" },
+            { "x": 2, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 0, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 1, "type": "rock", "pass": "never" }
+        ],
+        "pickups": [
+            { "type": "key",       "x": 3, "y": 2 }
+        ],
+        "clear": {
+            "logic": "AND",
+            "conditions": [
+                {
+                    "id": "reach_goal",
+                    "type": "reach",
+                    "target": "lunar_base",
+                    "requires": ["key"],
+                    "cutscenes":{
+                    "success":"assets/cutscene/mission-success1.png",
+                    "fail":"assets/cutscene/mission-failed2.png"
+                    },
+                    "text": "ポータルキーでワープゲートを抜け、月面基地へ向かう"
+                },
+                        {
+                "id": "life_zero",
+                "type": "life0",
+                "count": 5,
+                "cutscenes": {
+                    "fail": "assets/cutscene/mission-failed3.png"
+                },
+                "text": "エネルギーが0にならない"
+                }
+            ]
+        },
+        "cmdCap": 8,
+        "repeatInnerCap": 3
     }
 ]

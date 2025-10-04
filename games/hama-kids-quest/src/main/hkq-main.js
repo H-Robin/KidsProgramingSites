@@ -142,7 +142,7 @@ window.addEventListener("load", async () => {
       location.href = "html/hkq-map.html";
     }
   });
-  setupClearCommandsButton();s
+  setupClearCommandsButton();
 });
 
 /*

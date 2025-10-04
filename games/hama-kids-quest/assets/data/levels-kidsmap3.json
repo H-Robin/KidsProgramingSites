@@ -1,23 +1,38 @@
 [
-        {
-        "id": "ROUTE-KIDS-Ya",
+
+    {
+        "id": "ROUTE-KIDS-Ko",
         "gridW": 5,
         "gridH": 5,
         "robot": { "x": 0, "y": 4, "dir": 1 },
         "goal":  { "x": 4, "y": 0 },
         "goalIcon": "assets/floor/moon-base2.png",
         "obstacles": [
-            { "x": 1, "y": 4, "type": "rock", "pass": "never" },
-            { "x": 1, "y": 3, "type": "rock", "pass": "never" },
-            { "x": 1, "y": 2, "type": "gate", "pass": "need_item", "item": "key" },
+            { "x": 1, "y": 3, "type": "portalgate", "group":"A","pass": "need_item", "item": "portalkey" },
+            { "x": 1, "y": 2, "type": "rock", "pass": "never" },
             { "x": 1, "y": 1, "type": "rock", "pass": "never" },
+            { "x": 2, "y": 1, "type": "wall", "pass": "never" },
+            { "x": 3, "y": 4, "type": "wall", "pass": "never" },
             { "x": 3, "y": 3, "type": "rock", "pass": "never" },
+            { "x": 3, "y": 2, "type": "wall", "pass": "never" },
             { "x": 3, "y": 1, "type": "rock", "pass": "never" },
-            { "x": 3, "y": 0, "type": "rock", "pass": "never" }
+            { "x": 3, "y": 0, "type": "portalgate", "group":"A","pass": "need_item", "item": "portalkey" },
+            { "x": 4, "y": 4, "type": "rock", "pass": "never" },
+            { "x": 4, "y": 3, "type": "wall", "pass": "never" },
+            { "x": 4, "y": 2, "type": "wall", "pass": "never" },
+            { "x": 4, "y": 1, "type": "rock", "pass": "never" }
+
         ],
         "pickups": [
-            { "type": "key",       "x": 3, "y": 2 }
+            { "type": "key",       "x": 2, "y": 2 },
+            { "type": "portalkey", "x": 0, "y": 0 }
         ],
+
+        "portals": [
+            {"a": {"x":1,"y":3},"b": {"x":3,"y":0},"requires": ["portalkey"], "bidirectional": true },
+            {"a": {"x":3,"y":0},"b": {"x":1,"y":3},"requires": ["portalkey"], "bidirectional": true }
+        ],
+
         "clear": {
             "logic": "AND",
             "conditions": [

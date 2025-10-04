@@ -253,7 +253,7 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('ob_rock',     'assets/floor/rock.png');
     this.load.image('ob_wall',     'assets/floor/wall.png');
     this.load.image('gate_closed', 'assets/floor/closed-gate.png');
-    this.load.image('gate_opened', 'assets/floor/opened-gate.png');
+    this.load.image('gate_opened', 'assets/floor/opened-gate2.png');
     this.load.image('portalgate',  'assets/floor/opened-gate.png');
   }
 
