@@ -1,5 +1,14 @@
 // hkq-mission.js — Mission UI / conditions evaluator / HUD sync
 
+// --- simple DOM ready helper (idempotent) ---
+function onDOMReady(fn){
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', fn, { once:true });
+  } else {
+    fn();
+  }
+}
+
 // ▼ Mission欄のアイコン画像パス（必要に応じて追加）
 export const MISSION_ICON_MAP = {
   "ロボット":       "assets/robot/idle/character_robot_idle0.png",
@@ -39,9 +48,33 @@ export class Mission {
       stats:{ life:this.lifeMax, defeated:{} } // defeated: { 'monster-a': n, ... }
     };
     this._bindEvents();
-    this.renderMissionPanel();
+    // Initialize HUD only after DOM is ready and elements exist
+    this._hudInitDone = false;
+    onDOMReady(() => this._initHudWhenReady());
+  }
+
+  /**
+   * DOMが用意され、HUD要素が存在するときだけ初期化（再入しても安全）
+   */
+  _initHudWhenReady(){
+    if (this._hudInitDone) return;
+    const btn   = document.getElementById('btn-toggle-mission');
+    const panel = document.getElementById('mission-panel');
+    // 必須要素が無ければ、次フレームで再試行（最大数回）
+    if (!btn || !panel) {
+      if ((this._hudInitRetry|0) > 8) {
+        console.warn('[hkq] HUD init skipped: required nodes not found (#btn-toggle-mission / #mission-panel)');
+        return;
+      }
+      this._hudInitRetry = (this._hudInitRetry|0) + 1;
+      requestAnimationFrame(() => this._initHudWhenReady());
+      return;
+    }
+    // 初期化
     this._initMissionToggleButton();
+    this.renderMissionPanel();
     this._syncMissionPanelFromAria();
+    this._hudInitDone = true;
   }
 
   /**
@@ -134,48 +167,54 @@ export class Mission {
     const btn = document.getElementById('btn-toggle-mission');
     if (!btn) return;
 
-    // 重複バインド防止
-    if (this._onMissionToggle){
-      btn.removeEventListener('click', this._onMissionToggle);
-    }
+    // 再入対策（重複バインド解除）
+    if (this._onMissionToggle) btn.removeEventListener('click', this._onMissionToggle);
+    if (this._onMissionKey)    document.removeEventListener('keydown', this._onMissionKey);
 
+    const LS_KEY   = 'hkq.hud.mission.visible';
     const targetId = btn.getAttribute('aria-controls') || 'hud-mission';
-    const panel = document.getElementById(targetId) || null;
-    const sr = btn.querySelector('.sr-only');
-
-    // 現在の可視状態を推定
-    const isVisible = (el)=>{
-      if (!el) return btn.getAttribute('aria-pressed') === 'true';
-      const cs = window.getComputedStyle(el);
-      const hiddenAttr = el.hasAttribute('hidden');
-      const hiddenClass = el.classList.contains('is-hidden');
-      const none = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
-      return !(hiddenAttr || hiddenClass || none);
-    };
+    const panel    = document.getElementById(targetId) || null;
+    const sr       = btn.querySelector('.sr-only');
 
     const setPressed = (on)=>{
       btn.setAttribute('aria-pressed', String(on));
-      // SRテキスト＆title切替
       const label = on ? 'ミッションタスク非表示' : 'ミッションタスク表示';
       if (sr) sr.textContent = label;
       btn.title = `ミッションタスクの${on ? '非表示' : '表示'} (M)`;
+      try { localStorage.setItem(LS_KEY, on ? '1' : '0'); } catch(_){}
     };
 
     const applyPanel = (on)=> this._setMissionPanelVisible(!!on);
 
-    // クリックでトグル（開閉も行う）
+    // 初期状態（既定: 表示）。localStorage が 0 なら非表示で開始
+    let initialVisible = true;
+    try {
+      const v = localStorage.getItem(LS_KEY);
+      if (v === '0') initialVisible = false;
+    } catch(_){}
+
+    setPressed(initialVisible);
+    applyPanel(initialVisible);
+
+    // クリックでトグル
     this._onMissionToggle = (ev)=>{
-      ev.preventDefault();
-      ev.stopPropagation();
+      ev.preventDefault(); ev.stopPropagation();
       const next = !(btn.getAttribute('aria-pressed') === 'true');
       setPressed(next);
       applyPanel(next);
     };
     btn.addEventListener('click', this._onMissionToggle);
 
-    // 外部から表示状態が変わる可能性に備え、簡易同期（任意：必要なら有効に）
-    // const observer = new MutationObserver(()=> setPressed(isVisible(panel)));
-    // if (panel) observer.observe(panel, { attributes:true, attributeFilter:['class','hidden','style'] });
+    // キーボード: M でトグル（入力中は無効）
+    this._onMissionKey = (e)=>{
+      if (!e || String(e.key).toLowerCase() !== 'm') return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+      const next = !(btn.getAttribute('aria-pressed') === 'true');
+      setPressed(next);
+      applyPanel(next);
+    };
+    document.addEventListener('keydown', this._onMissionKey);
   }
 
   dispose(){
@@ -408,6 +447,7 @@ export class Mission {
     const panel = document.getElementById(targetId);
     if (!panel) return;
     const on = btn.getAttribute('aria-pressed') === 'true';
+    try { localStorage.setItem('hkq.hud.mission.visible', on ? '1' : '0'); } catch(_){}
     if (on){
       panel.hidden = false;
       panel.removeAttribute('hidden');
