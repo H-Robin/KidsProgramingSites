@@ -47,8 +47,8 @@
     <script>
     (function() {
       var ua = navigator.userAgent;
-      // macOS/iOS Safari（Chrome/Edge/Opera/Brave を除外）
-      var isSafari = /Safari/.test(ua) && !/(Chrome|Chromium|Edg|OPR|Brave)/.test(ua);
+      // デスクトップ系Safari判定（iOS版Chrome/Firefox/EdgeのUAトークンも除外）
+      var isSafari = /Safari/.test(ua) && !/(Chrome|Chromium|Edg|OPR|Brave|CriOS|FxiOS|EdgiOS)/.test(ua);
       // iOS版の各種Safari（Chrome/FirefoxのiOS版はUAに CriOS/FxiOS/EdgiOS が入る）
       var isIOSSafari = /iP(hone|ad|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
 
