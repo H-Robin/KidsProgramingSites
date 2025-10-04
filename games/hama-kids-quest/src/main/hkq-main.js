@@ -129,6 +129,9 @@ function getStartMissionFromHash() {
 }
 
 window.addEventListener("load", async () => {
+  // Show loading overlay by default; it will be hidden on mission start
+  const overlay = document.getElementById('loading-overlay');
+
   const levelsFile = getLevelsFileFromHash();
   const res = await fetch(levelsFile, { cache: "no-store" });
   const levels = await res.json();
@@ -149,6 +152,12 @@ window.addEventListener("load", async () => {
     setTimeout(resolve, 2000);
   });
   document.dispatchEvent(new CustomEvent(HKQ_EVENTS.SET_LEVELS, { detail: { levels, startIdx } }));
+
+  // Hide loading overlay when the first mission actually starts building/displaying
+  const hideOverlay = () => { try { overlay?.classList.add('hidden'); } catch(_){} };
+  document.addEventListener(HKQ_EVENTS.MISSION_START, hideOverlay, { once:true });
+  // Safety: if MISSION_START didn’t fire (edge case), hide after short delay
+  setTimeout(hideOverlay, 2500);
 
   // カテゴリ完了 → マップへ戻る処理は現状どおり
   document.addEventListener(HKQ_EVENTS.MISSION_CLEARED, () => {

@@ -508,6 +508,37 @@ body.ui-locked #exit{
 }
 
 /* =========================
+   Loading Overlay (neon blink)
+   ========================= */
+.loading-overlay{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(60% 40% at 50% 50%, rgba(10,16,24,.85), rgba(10,16,24,.95));
+  z-index: 5000;
+}
+.loading-overlay.hidden{ display:none; }
+.neon-loading{
+  font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+  font-size: clamp(24px, 4vw, 42px);
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: #a5f3fc;
+  text-shadow:
+    0 0 6px rgba(56,189,248,.8),
+    0 0 18px rgba(56,189,248,.6),
+    0 0 32px rgba(56,189,248,.35);
+  animation: neonBlink 1.2s ease-in-out infinite alternate;
+}
+@keyframes neonBlink{
+  0%{ opacity: .45; filter: saturate(0.85) brightness(0.8); }
+  60%{ opacity: 1;   filter: saturate(1.1) brightness(1.05); }
+  100%{ opacity: .7; filter: saturate(1.0) brightness(0.95); }
+}
+
+/* =========================
    hud-topbar
    ========================= */
 .hud-topbar{
