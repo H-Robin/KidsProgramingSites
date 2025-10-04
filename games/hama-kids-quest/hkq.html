@@ -33,16 +33,21 @@
         <div id="hud-mission" class="hud-mission" aria-hidden="false">
           <div id="mission-panel" class="mission-panel" aria-label="Mission Status"></div>
         </div>
-        <!-- ★ 追加：HUD表示/非表示トグル -->
-        <button
-          id="btn-toggle-mission"
-          class="hud-mission-toggle"
-          type="button"
-          aria-controls="hud-mission"
-          aria-pressed="true"
-          title="ミッションタスクの表示/非表示 (M)">
-          👁<span class="sr-only">ミッションタスクの表示/非表示</span>
-        </button>
+      <!-- ★ 追加：タイトルバー（右上固定・横並び） -->
+      <div class="hud-topbar">
+        <div class="hud-topbar-row">
+          <span id="level-id-label" title="Level ID" class="hud-topbar-id">ID: (loading)</span>
+          <button
+            id="btn-toggle-mission"
+            class="hud-mission-toggle"
+            type="button"
+            aria-controls="hud-mission"
+            aria-pressed="true"
+            title="ミッションタスクの表示/非表示 (M)">
+            👁<span class="sr-only">ミッションタスク非表示</span>
+          </button>
+        </div>
+      </div>
 
       </div>
     </div>
@@ -79,6 +84,7 @@
       <div class="pane">
         <h3>アイテムBOX</h3>
         <div id="item-box">
+          <div class="slot"></div>
           <div class="slot"></div>
           <div class="slot"></div>
           <div class="slot"></div>

@@ -44,10 +44,9 @@ body{
 /* 使う場合のみ */
 .cell[data-tile="moon-base"]   { background-image:url("../assets/floor/moon-base.png"); }
 /* ルート開発タイルの背景画像（hkq-map.html と同階層の CSS から1つ上の assets を参照） */
-.cell[data-tile="route-dev"]{ background-image: url("../assets/floor/route-dev.png");
-  background-size: cover;
-  background-position: center;
-}
+.cell[data-tile="route-dev"]{ background-image: url("../assets/floor/route-dev.png");}
+.cell[data-tile="kids-dev1"]{ background-image: url("../assets/floor/route-kids-dev.png");}
+.cell[data-tile="kids-dev2"]{ background-image: url("../assets/floor/route-kids-dev2.png");}
 
 .title {
   font-size: clamp(2rem, 4vw, 3rem);  /* 大きめで可変 */

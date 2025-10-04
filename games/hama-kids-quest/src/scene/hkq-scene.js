@@ -232,7 +232,8 @@ export class HkqScene extends Phaser.Scene {
 
     // Items / Enemy / Tiles
 //    this.load.image('goal_png', 'assets/floor/moon_base_goal.png');
-    this.load.image('key_icon', 'assets/items/gatecard.png');
+    this.load.image('key_icon', 'assets/items/gatecard.png'); //月面基地入館用
+    this.load.image('portalkey_icon', 'assets/items/portalkey.png'); // ポータルゲート用
     this.load.image('weapon_icon', 'assets/weapon/blaster-a.png');
     this.load.image('monsterA_idle0', 'assets/enemy/monster-a/idle/idle0.png');
     this.load.image('monsterA_idle1', 'assets/enemy/monster-a/idle/idle1.png');
@@ -253,6 +254,7 @@ export class HkqScene extends Phaser.Scene {
     this.load.image('ob_wall',     'assets/floor/wall.png');
     this.load.image('gate_closed', 'assets/floor/closed-gate.png');
     this.load.image('gate_opened', 'assets/floor/opened-gate.png');
+    this.load.image('portalgate',  'assets/floor/opened-gate.png');
   }
 
     
@@ -584,6 +586,21 @@ export class HkqScene extends Phaser.Scene {
   /** snap(v): ピクセル位置の丸め */
   snap(v) { return Math.round(v); }
 
+  placePickup(def, texKey, setTo) {
+    // 座標があればそのマス、なければ空きマス
+    const cell = (Number.isFinite(def.x) && Number.isFinite(def.y))
+      ? { x:def.x|0, y:def.y|0 }
+      : this.pickFreeCell(this._occupiedForPickups);
+
+    if (!cell) return;
+
+    const pos = this.cellToXY(cell.x, cell.y);
+    const spr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), texKey)
+      .setOrigin(0.5, 1).setDepth(9)
+      .setDisplaySize(Math.floor(this._isoW*0.8), Math.floor(this._isoH*0.9));
+    this.fieldLayer.add(spr);
+    setTo(cell, spr);
+  }
   // ---- Build a level ------------------------------------------------------
 
   /**
@@ -607,14 +624,43 @@ export class HkqScene extends Phaser.Scene {
     this.keySpr = null;
     try { this.weaponSpr?.destroy(); } catch(_) {}
     this.weaponSpr = null;
+    // 旧ポータルキー片付け（単体/配列の両方をケア）
+    if (Array.isArray(this.portalKeys)) {
+      this.portalKeys.forEach(k => { try { k.spr?.destroy(); } catch(_) {} });
+    }
+    this.portalKeys = [];
+    try { this.portalKeySpr?.destroy(); } catch(_) {}
+    this.portalKeySpr = null;
+    this.portalKeyCell = null;
     // アイテムボックスも空表示へ
     this.renderItemBox?.();
 
+    const btn = document.getElementById("btn-toggle-mission");
+    const sr = btn.querySelector(".sr-only");
+
+    btn.addEventListener("click", () => {
+      const isPressed = btn.getAttribute("aria-pressed") === "true";
+      // aria-pressed をトグル
+      btn.setAttribute("aria-pressed", String(!isPressed));
+
+      // sr-only のテキスト切り替え
+      if (!isPressed) {
+        sr.textContent = "ミッションタスク非表示"; // 表示中 → 非表示にできる
+      } else {
+        sr.textContent = "ミッションタスク表示";   // 非表示中 → 表示にできる
+      }
+    });
 //    this.createAnimations(); // 念のため常に先に登録（重複は内部で弾く）
     this.clearRunnerQueue();   // ミッション開始の度に必ずキューを空に
     const L = this.levels[this.missionIndex] || {};
     this.level = L;
 
+    const label = document.getElementById('level-id-label');
+    if (label) {
+      const idText = (L && L.id) ? String(L.id) : '(no id)';
+      label.textContent = `ID: ${idText}`;
+      // 長いIDなら省略表示にしたい場合は CSS で text-overflow を指定すると◎
+    }
     this.gridW = L.gridW ?? 6;
     this.gridH = L.gridH ?? 8;
 
@@ -677,6 +723,14 @@ export class HkqScene extends Phaser.Scene {
 
     this._isoW = isoW; this._isoH = isoH;
 
+    // ---- portals（座標ペアワープ）を正規化して保持 ----
+    this.portals = Array.isArray(L.portals) ? L.portals.map(p => ({
+      a: { x: (p?.a?.x|0), y: (p?.a?.y|0) },
+      b: { x: (p?.b?.x|0), y: (p?.b?.y|0) },
+      requires: Array.isArray(p?.requires) ? p.requires.slice() : [],
+      bidirectional: (p?.bidirectional !== false)
+    })) : [];
+
     // Goal sprite
     const gpx = this.cellToXY(this.goalCell.x, this.goalCell.y);
     this.goalSpr?.destroy();
@@ -696,7 +750,7 @@ export class HkqScene extends Phaser.Scene {
       this.load.once('complete', () => {
         this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), texKey)
           .setOrigin(0.5, 1)
-          .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
+          .setDisplaySize(Math.floor(isoW * 0.9), Math.floor(isoH * 1.3))
           .setDepth(5);
         this.groundLayer.add(this.goalSpr);
         
@@ -705,7 +759,7 @@ export class HkqScene extends Phaser.Scene {
     } else {
       this.goalSpr = this.add.image(this.snap(gpx.x), this.snap(gpx.y), texKey)
         .setOrigin(0.5, 1)
-        .setDisplaySize(Math.floor(isoW * 1.6), Math.floor(isoH * 1.4))
+        .setDisplaySize(Math.floor(isoW * 0.9), Math.floor(isoH * 1.3))
         .setDepth(5);
       this.groundLayer.add(this.goalSpr);
 
@@ -715,6 +769,7 @@ export class HkqScene extends Phaser.Scene {
     const occupied = new Set();
     occupied.add(this.occKey(this.startCell.x, this.startCell.y));
     occupied.add(this.occKey(this.goalCell.x,  this.goalCell.y));
+    this._occupiedForPickups = occupied; // ★追加（ピックアップ共通で使用）
     // --- Obstacles (rock/wall/gate) from JSON ---
     this.obstacles = [];
     this.occObstacles = new Map();
@@ -729,13 +784,14 @@ export class HkqScene extends Phaser.Scene {
         case 'rock': key = 'ob_rock'; break;
         case 'wall': key = 'ob_wall'; break;
         case 'gate': key = (this.inventory?.key ? 'gate_opened' : 'gate_closed'); break;
+        case 'portalgate':key = 'portalgate'; break;
       }
       if (!key) return;
 
       const pos = this.cellToXY(x, y);
       const spr = this.add.image(this.snap(pos.x), this.snap(pos.y), key)
         .setOrigin(0.5,1).setDepth(7)
-        .setDisplaySize(Math.floor(this._isoW*1.0), Math.floor(this._isoH*1.2));
+        .setDisplaySize(Math.floor(this._isoW*0.7), Math.floor(this._isoH*1.0));
       this.groundLayer.add(spr);
 
       const ob = { x, y, type:def.type, pass:(def.pass||'never'), item:(def.item||null), spr };
@@ -777,20 +833,12 @@ export class HkqScene extends Phaser.Scene {
     // ピックアップ定義
     const pickupDefs = Array.isArray(L.pickups) ? L.pickups : [];
 
-    // WEAPON
+    // WEAPON（ヘルパで座標優先→無ければ空きマス）
     const weaponDef = pickupDefs.find(p => p.type === 'weapon');
-    if (weaponDef && (weaponDef.count|0) > 0) {
-      const cellW = (Number.isFinite(weaponDef?.x) && Number.isFinite(weaponDef?.y))
-        ? { x: weaponDef.x|0, y: weaponDef.y|0 }
-        : this.pickFreeCell(occupied);
-      if (cellW) {
-        this.weaponCell = cellW;
-        const pos = this.cellToXY(cellW.x, cellW.y);
-        this.weaponSpr = this.add.sprite(this.snap(pos.x), this.snap(pos.y), 'weapon_icon')
-          .setOrigin(0.5, 1).setDepth(9)
-          .setDisplaySize(Math.floor(this._isoW * 0.8), Math.floor(this._isoH * 0.9));
-        this.fieldLayer.add(this.weaponSpr);
-      }
+    if (weaponDef) {
+      this.placePickup(weaponDef, 'weapon_icon', (cell, spr) => {
+        this.weaponCell = cell; this.weaponSpr = spr;
+      }, occupied);
     }
 
     // KEY（count 未指定は 1 扱い。x,y が有効ならそこに置く）
@@ -821,6 +869,15 @@ export class HkqScene extends Phaser.Scene {
       }
     }
 
+    // PORTAL KEY（ワープ用キー）— 複数配置に対応
+    const pkeyDefs = pickupDefs.filter(p => (p.type||'').toLowerCase() === 'portalkey');
+    this._hasPortalKeyPickup = pkeyDefs.length > 0;
+    this.portalKeys = [];
+    pkeyDefs.forEach(def => {
+      this.placePickup(def, 'portalkey_icon', (cell, spr) => {
+        this.portalKeys.push({ cell, spr });
+      }, occupied);
+    });
     // --- BLUEPRINTS (設計図) ここから -------------
     const bpDef = (Array.isArray(L.pickups) ? L.pickups : []).find(p => p.type === 'blueprint');
     this.blueprints = [];                 // [{cell:{x,y}, spr:Phaser.GameObjects.Sprite}]
@@ -898,8 +955,15 @@ export class HkqScene extends Phaser.Scene {
     }
 
     // インベントリ初期化
-    this.inventory =  { weapon: false, key: false, blueprint: 0 };
-    this.inventory.blueprint = 0;
+    this.inventory =  { weapon:false, 
+                        key:false, 
+                        portalkey:false, 
+                        blueprint:0 };    
+//    this.inventory.blueprint = 0;
+   // ポータル多重発火防止（ms）
+    this._warpCooldownMs = 220;
+    this._lastWarpAt = 0;
+    this._lastWarpCell = null;
     // buildLevel() の末尾あたり
     this.mission = new Mission(this.level);
     this.mission.reset(this.level);   // ← 追加
@@ -1140,16 +1204,31 @@ export class HkqScene extends Phaser.Scene {
             }
           }
         }
-        // 3) カードキー
+        // 3) カードキー（基地ゲート用）
         if (this.keyCell && cx === this.keyCell.x && cy === this.keyCell.y && !this.inventory.key) {
           this.inventory.key = true;
           try { this.keySpr?.destroy(); } catch(_) {}
           this.keySpr = null;
           this.renderItemBox();
           document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'key' } }));
-          this.refreshGates?.();
         }
 
+        // 3.5) ポータルキー（ワープ用）— 複数対応
+        if (this.portalKeys?.length) {
+          const hit = this.portalKeys.findIndex(k => k.cell.x === cx && k.cell.y === cy);
+          if (hit >= 0 && !this.inventory.portalkey) {
+            this.inventory.portalkey = true;
+            try { this.portalKeys[hit].spr?.destroy(); } catch(_) {}
+            this.portalKeys.splice(hit, 1);
+            this.renderItemBox();
+            document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'portalkey' } }));
+          }
+        }
+        // 3.9) ポータル（portalgate）転送
+        if (this.tryWarpAt(cx, cy)) {
+          // 転送が起きたら、このtickはここで終了（次tickへ）
+          return;
+        }
         // 4) ゴール到達（鍵チェック）
         if (this.isAtGoal()) {
           const condReach = this.getCondition(c => c.id === 'reach_goal');
@@ -1219,21 +1298,21 @@ export class HkqScene extends Phaser.Scene {
     if (!box) return;
     const slots = box.querySelectorAll('.slot');
     slots.forEach(s => { s.classList.remove('on'); s.innerHTML = ''; });
+    // 1: weapon
     if (this.inventory.weapon && slots[0]) {
       slots[0].classList.add('on');
       slots[0].innerHTML = `<img src="assets/weapon/blaster-a.png" alt="weapon" style="width:90%;height:auto;">`;
     }
+    // 2: gate key（基地ゲート）
     if (this.inventory.key && slots[1]) {
       slots[1].classList.add('on');
       slots[1].innerHTML = `<img src="assets/items/gatecard.png" alt="key" style="width:90%;height:auto;">`;
     }
-    if (slots[2]) {
-    const got = this.inventory.blueprint|0;
-      if (got > 0) {
-        slots[2].classList.add('on');
-        slots[2].innerHTML = `<img src="assets/items/blueprint1.png" alt="blueprint" style="width:90%;height:auto;"><div class="count">${got}</div>`;
-      }
-    } 
+    // 3: portal key（ワープ）
+    if (this.inventory.portalkey && slots[2]) {
+      slots[2].classList.add('on');
+      slots[2].innerHTML = `<img src="assets/items/portalkey.png" alt="portalkey" style="width:90%;height:auto;">`;
+    }
     /*
     // renderItemBox() の末尾に追記（ラベルだけ）
     const info = document.getElementById('mission-clear-text'); // 既存の説明欄を流用
@@ -1296,7 +1375,7 @@ export class HkqScene extends Phaser.Scene {
 
     if (ob.type === 'rock' || ob.type === 'wall') return false;
 
-    if (ob.type === 'gate') {
+    if (ob.type === 'gate' || ob.type === 'portalgate') {
       const pass = ob.pass || 'never';     // 'never' | 'need_item' | 'always'
       if (pass === 'always') return true;
       if (pass === 'never')  return false;
@@ -1318,4 +1397,97 @@ export class HkqScene extends Phaser.Scene {
       if (ob.spr.texture.key !== want) ob.spr.setTexture(want);
     });
   }
+  /**
+   * tryWarpAt(x,y)
+   *  - 現在セルが portalgate なら、同グループの“次の”portalgate へ転送
+   *  - need_item が設定されている場合は inventory を確認（canEnter と同一基準）
+   *  - クールダウンで多重発火を防止
+   * @returns {boolean} 実際にワープしたら true
+   */
+  tryWarpAt(x, y) {
+    const now = (performance && performance.now) ? performance.now() : Date.now();
+    if (now - (this._lastWarpAt || 0) < (this._warpCooldownMs || 180)) return false; // 連発防止
+
+    // 1) portals 配列があれば「a<->b」優先で処理
+    if (Array.isArray(this.portals) && this.portals.length) {
+      let link = null, dir = null;
+      for (const p of this.portals) {
+        if ((p?.a?.x === x && p?.a?.y === y)) { link = p; dir = 'a2b'; break; }
+        if (p?.bidirectional !== false && (p?.b?.x === x && p?.b?.y === y)) { link = p; dir = 'b2a'; break; }
+      }
+      if (!link) return false;
+
+      // 要件チェック（portals.requires を全て満たす必要あり）
+      if (Array.isArray(link.requires) && link.requires.length) {
+        const lacks = link.requires.some(k => !this.inventory?.[k]);
+        if (lacks) {
+          // 要件不足は“失敗演出→リスタート”で明確化
+          const condReach = this.getCondition?.(c => c.id === 'reach_goal');
+          const pathFail  = this.getCondCutscene?.(condReach, 'fail')
+                        || this.getDefaultCutscene?.('goal', 'fail')
+                        || 'assets/cutscene/mission-failed2.png';
+          this.playFailCutscene?.(pathFail, () => { this.buildLevel(true); });
+          return true;
+        }
+      }
+
+      const dest = (dir === 'a2b') ? link.b : link.a;
+      // ★ ポータルキー消費：portals.requires に portalkey が含まれていれば消費
+      if (Array.isArray(link.requires) && link.requires.includes('portalkey') && this.inventory.portalkey) {
+        this.inventory.portalkey = false;
+        // 進捗やカウントは付けず、アイテムボックスのみ反映
+        this.renderItemBox?.();
+      }
+      this._lastWarpAt = now;
+      this._lastWarpCell = this.occKey(dest.x, dest.y);
+      return this._doWarpTo(dest.x, dest.y);
+    }
+
+    // 2) フォールバック：portalgate の group 循環（従来動作）
+    const here = this.occObstacles?.get?.(this.occKey(x,y));
+    if (!here || here.type !== 'portalgate') return false;
+    if (!this.canEnter(x, y)) return false; // obstacles 側の pass/item も尊重
+    const group = here.group ?? null;
+    const list = (this.obstacles || []).filter(ob =>
+      ob.type === 'portalgate' && (ob.group ?? null) === group
+    );
+    if (list.length <= 1) return false;
+    const idx = list.findIndex(ob => ob.x === x && ob.y === y);
+    const next = list[(idx + 1 + list.length) % list.length];
+    const dest = { x: next.x, y: next.y };
+    // ★ フォールバック時も、入場条件が portalkey なら消費
+    //    （canEnter で通過済み＝所持している前提）
+    if ((here.pass === 'need_item' && here.item === 'portalkey') && this.inventory.portalkey) {
+      this.inventory.portalkey = false;
+      this.renderItemBox?.();
+    }
+    this._lastWarpAt = now;
+    this._lastWarpCell = this.occKey(dest.x, dest.y);
+    return this._doWarpTo(dest.x, dest.y);
+  }
+
+  // 内部：フェード付き瞬間移動
+  _doWarpTo(dx, dy) {
+    this._cutscenePlaying = true;
+    this.lockGame?.();
+    this.tweens.add({
+      targets: this.robotSpr, alpha: 0.0, duration: 120, ease: 'quad.out',
+      onComplete: () => {
+        this.robotCell = { x: dx, y: dy };
+        const p2 = this.cellToXY(dx, dy);
+        this.robotSpr.setPosition(this.snap(p2.x), this.snap(p2.y));
+        this.tweens.add({
+          targets: this.robotSpr, alpha: 1.0, duration: 120, ease: 'quad.in',
+          onComplete: () => {
+            this._cutscenePlaying = false;
+            this.unlockGame?.();
+            this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
+            document.dispatchEvent(new CustomEvent('hkq:tick'));
+          }
+        });
+      }
+    });
+    return true;
+  }
 }
+

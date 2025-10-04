@@ -4,8 +4,9 @@
 export const MISSION_ICON_MAP = {
   "ロボット":       "assets/robot/idle/character_robot_idle0.png",
   "モンスター":     "assets/enemy/monster-a/idle/idle1.png",
+  "ポータルキー":   "assets/items/portalkey.png",
   "ゲートカード":   "assets/items/gatecard.png",
-  "ゴール":         "assets/floor/moon_base_goal.png",
+  "ゴール":         "assets/floor/moon-base2.png",
   "建設予定地":     "assets/floor/planedsite_goal.png",
   "ブラスターガン": "assets/weapon/blaster-a.png",
   "設計図":         "assets/items/blueprint1.png",
@@ -39,9 +40,34 @@ export class Mission {
     };
     this._bindEvents();
     this.renderMissionPanel();
+    this._initMissionToggleButton();
+    this._syncMissionPanelFromAria();
   }
 
-  
+  /**
+   * ミッションパネルの可視状態を強制同期
+   * - hidden 属性 / .is-hidden / .collapsed / style.display を一括管理
+   */
+  _setMissionPanelVisible(on){
+    const btn = document.getElementById('btn-toggle-mission');
+    if (!btn) return;
+    const targetId = btn.getAttribute('aria-controls') || 'hud-mission';
+    const panel = document.getElementById(targetId);
+    if (!panel) return;
+
+    if (on){
+      panel.hidden = false;
+      panel.removeAttribute('hidden');
+      panel.classList.remove('is-hidden');
+      panel.classList.remove('collapsed');
+      panel.style.display = '';
+    } else {
+      panel.hidden = true;
+      panel.setAttribute('hidden', '');
+      panel.classList.add('is-hidden');
+      panel.style.display = 'none';
+    }
+  }
 
   /* ------------------------------------------------------------------------ *
    * Events bridge (DOM CustomEvents)
@@ -62,7 +88,7 @@ export class Mission {
         if (!id) return;
         const inv = this.progress.inventory;
         // weapon/key は booleanでも数でも対応
-        if (id === 'weapon' || id === 'key') {
+        if (id === 'weapon' || id === 'key' || id==='portalkey') {
           inv[id] = (inv[id]|0) + 1; // boolean→数に寄せる（UI上は有無を見る）
         } else {
           inv[id] = (inv[id]|0) + 1;
@@ -96,6 +122,60 @@ export class Mission {
     document.addEventListener('hkq:enemy-down',    this._handlers.down);
     document.addEventListener('hkq:reach-goal',    this._handlers.reach);
     document.addEventListener('hkq:life-changed',  this._handlers.life);
+  }
+
+  /**
+   * HUD ミッションの表示/非表示トグルボタンのラベル（sr-only）と状態同期
+   * - aria-pressed=true なら「ミッションタスク非表示」
+   * - aria-pressed=false なら「ミッションタスク表示」
+   * - 可能なら対象パネルの開閉もここで制御（既存実装があっても二重にならないよう class+hidden を統一）
+   */
+  _initMissionToggleButton(){
+    const btn = document.getElementById('btn-toggle-mission');
+    if (!btn) return;
+
+    // 重複バインド防止
+    if (this._onMissionToggle){
+      btn.removeEventListener('click', this._onMissionToggle);
+    }
+
+    const targetId = btn.getAttribute('aria-controls') || 'hud-mission';
+    const panel = document.getElementById(targetId) || null;
+    const sr = btn.querySelector('.sr-only');
+
+    // 現在の可視状態を推定
+    const isVisible = (el)=>{
+      if (!el) return btn.getAttribute('aria-pressed') === 'true';
+      const cs = window.getComputedStyle(el);
+      const hiddenAttr = el.hasAttribute('hidden');
+      const hiddenClass = el.classList.contains('is-hidden');
+      const none = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+      return !(hiddenAttr || hiddenClass || none);
+    };
+
+    const setPressed = (on)=>{
+      btn.setAttribute('aria-pressed', String(on));
+      // SRテキスト＆title切替
+      const label = on ? 'ミッションタスク非表示' : 'ミッションタスク表示';
+      if (sr) sr.textContent = label;
+      btn.title = `ミッションタスクの${on ? '非表示' : '表示'} (M)`;
+    };
+
+    const applyPanel = (on)=> this._setMissionPanelVisible(!!on);
+
+    // クリックでトグル（開閉も行う）
+    this._onMissionToggle = (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      const next = !(btn.getAttribute('aria-pressed') === 'true');
+      setPressed(next);
+      applyPanel(next);
+    };
+    btn.addEventListener('click', this._onMissionToggle);
+
+    // 外部から表示状態が変わる可能性に備え、簡易同期（任意：必要なら有効に）
+    // const observer = new MutationObserver(()=> setPressed(isVisible(panel)));
+    // if (panel) observer.observe(panel, { attributes:true, attributeFilter:['class','hidden','style'] });
   }
 
   dispose(){
@@ -287,14 +367,14 @@ export class Mission {
     const needKey = !!(Array.isArray(L.pickups) && L.pickups.some(p=>p.type==='key'));
     if (needKey) {
       const have = (this.progress.inventory.key|0) > 0 || !!this.progress.inventory.key;
-      lines.push({ key:'ゲートカード', label:'ゲートカード', meta: have ? '所持' : '未所持' });
+      lines.push({ key:'ゲートカード', label:'ゲートカード', meta: have ? '有' : '無' });
     }
 
     // 4) ブラスターガン（weapon）
     const needWeapon = !!(Array.isArray(L.pickups) && L.pickups.some(p=>p.type==='weapon'));
     if (needWeapon) {
       const haveW = (this.progress.inventory.weapon|0) > 0 || !!this.progress.inventory.weapon;
-      lines.push({ key:'ブラスターガン', label:'ブラスターガン', meta: haveW ? '所持' : '未所持' });
+      lines.push({ key:'ブラスターガン', label:'ブラスターガン', meta: haveW ? '有' : '無' });
     }
 
     // 5) 設計図（blueprint）
@@ -304,9 +384,41 @@ export class Mission {
       lines.push({ key:'設計図', label:'設計図', meta:`取得 ${have}/${bpDef.count|0}` });
     }
 
+       //  Portal（portalkey）
+    const needPortalKey = !!(Array.isArray(L.pickups) && L.pickups.some(p=>p.type==='portalkey'));
+    if (needPortalKey) {
+      const have = (this.progress.inventory.portalkey|0) > 0 || !!this.progress.inventory.portalkey;
+      lines.push({ key:'ポータルキー', label:'ポータルキー', meta: have ? '有' : '無' });
+    }
+
     // 6) ゴール
     lines.push({ key:'ゴール', label:'ゴール', meta: this.progress.reachedGoal ? '到達' : '未到達' });
 
     return lines;
+  }
+
+    /**
+   * ボタンの aria-pressed 状態から、対象パネルの可視状態を同期する
+   * - 既存の hidden / is-hidden / style.display のいずれにも対応
+   */
+  _syncMissionPanelFromAria(){
+    const btn = document.getElementById('btn-toggle-mission');
+    if (!btn) return;
+    const targetId = btn.getAttribute('aria-controls') || 'hud-mission';
+    const panel = document.getElementById(targetId);
+    if (!panel) return;
+    const on = btn.getAttribute('aria-pressed') === 'true';
+    if (on){
+      panel.hidden = false;
+      panel.removeAttribute('hidden');
+      panel.classList.remove('is-hidden');
+      panel.classList.remove('collapsed');
+      panel.style.display = '';
+    } else {
+      panel.hidden = true;
+      panel.setAttribute('hidden', '');
+      panel.classList.add('is-hidden');
+      panel.style.display = 'none';
+    }
   }
 }

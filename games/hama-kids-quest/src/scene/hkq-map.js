@@ -7,7 +7,11 @@ const TILE_TO_LEVEL_ID_PREFIX = {
   "moonland":    "基礎編：くり返しコマンドの使い方", 
   "planed-area": "応用編：実験棟建設",
   "moon-alien":  "応用編：宇宙人戦",          
-  "route-dev":  "応用編：月面ルート開発",          
+  "route-dev":  "応用編：月面ルート開発",  
+  "kids-dev1":  "応用編：キッズ開発チーム制作マップ１",          
+  "kids-dev2":  "応用編：キッズ開発チーム制作マップ2",          
+  "kids-dev3":  "応用編：キッズ開発チーム制作マップ3",          
+  "kids-dev4":  "応用編：キッズ開発チーム制作マップ4",          
   "moon-base":   "基礎編：方向コマンドの使い方"
 };
 
@@ -17,6 +21,10 @@ const TILE_TO_LEVEL_FILE = {
   "moon-alien":  "assets/data//levels-monster.json",
   "planed-area": "assets/data//levels-blueprint.json",
   "route-dev":   "assets/data//levels-route.json",
+  "kids-dev1":   "assets/data//levels-kidsmap1.json",
+  "kids-dev2":   "assets/data//levels-kidsmap2.json",
+  "kids-dev3":   "assets/data//levels-kidsmap3.json",
+  "kids-dev4":   "assets/data//levels-kidsmap4.json",
   "moon-base":   "assets/data//levels-tutorial1.json"
 };
 
