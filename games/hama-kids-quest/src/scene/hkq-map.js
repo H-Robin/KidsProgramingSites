@@ -15,18 +15,7 @@ const TILE_TO_LEVEL_ID_PREFIX = {
   "moon-base":   "基礎編：方向コマンドの使い方"
 };
 
-// タイルにカテゴリJSONファイルを割り当て
-const TILE_TO_LEVEL_FILE = {
-  "moonland":    "assets/data/levels-tutorial2.json",
-  "moon-alien":  "assets/data/levels-monster.json",
-  "planed-area": "assets/data/levels-blueprint.json",
-  "route-dev":   "assets/data/levels-route.json",
-  "kids-dev1":   "assets/data/levels-kidsmap1.json",
-  "kids-dev2":   "assets/data/levels-kidsmap2.json",
-  "kids-dev3":   "assets/data/levels-kidsmap3.json",
-  "kids-dev4":   "assets/data/levels-kidsmap4.json",
-  "moon-base":   "assets/data/levels-tutorial1.json"
-};
+import { LEVEL_JSON_BY_TILE } from '../main/config.js';
 
 // モーダル参照要素
 const $ov   = document.getElementById('confirm-overlay');
@@ -69,7 +58,7 @@ $play?.addEventListener('click', () => {
 
   // ★ data-tile → ファイル決定
   const key  = _pendingTarget.dataset.tile;
-  const file = TILE_TO_LEVEL_FILE[key];
+  const file = LEVEL_JSON_BY_TILE[key];
 
   if (file) {
     const url = new URL("../hkq.html", location.href);

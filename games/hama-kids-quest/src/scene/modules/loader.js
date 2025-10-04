@@ -1,31 +1,6 @@
 // Loader utilities centralization
-
-// Manifest of texture keys to asset paths
-export const TEXTURE_MANIFEST = {
-  // idle
-  'robot_idle0':  'assets/robot/idle/character_robot_idle0.png',
-  'robot_idle1':  'assets/robot/idle/character_robot_idle1.png',
-  // walk (0..7)
-  'robot_walk0':  'assets/robot/walk/character_robot_walk0.png',
-  'robot_walk1':  'assets/robot/walk/character_robot_walk1.png',
-  'robot_walk2':  'assets/robot/walk/character_robot_walk2.png',
-  'robot_walk3':  'assets/robot/walk/character_robot_walk3.png',
-  'robot_walk4':  'assets/robot/walk/character_robot_walk4.png',
-  'robot_walk5':  'assets/robot/walk/character_robot_walk5.png',
-  'robot_walk6':  'assets/robot/walk/character_robot_walk6.png',
-  'robot_walk7':  'assets/robot/walk/character_robot_walk7.png',
-  // cheer
-  'robot_cheer0': 'assets/robot/cheer/character_robot_cheer0.png',
-  'robot_cheer1': 'assets/robot/cheer/character_robot_cheer1.png',
-  // sad
-  'robot_sad0':   'assets/robot/sad/sad0.png',
-  'robot_sad1':   'assets/robot/sad/sad1.png',
-  'robot_sad2':   'assets/robot/sad/sad2.png',
-
-  // optional monster
-  'monsterA_idle0': 'assets/enemy/monster-a/idle/idle0.png',
-  'monsterA_idle1': 'assets/enemy/monster-a/idle/idle1.png',
-};
+import { TEXTURE_MANIFEST } from '../../main/config.js';
+export { TEXTURE_MANIFEST } from '../../main/config.js';
 
 // Keys that should be present before building core animations
 export const REQUIRED_CORE_KEYS = [
@@ -68,4 +43,3 @@ export async function ensureTextures(scene, keys) {
     console.error('[assets] 必須テクスチャ未ロード:', still);
   }
 }
-

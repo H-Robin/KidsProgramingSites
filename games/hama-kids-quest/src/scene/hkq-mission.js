@@ -13,18 +13,8 @@ function onDOMReady(fn){
   }
 }
 
-// ▼ Mission欄のアイコン画像パス（必要に応じて追加）
-export const MISSION_ICON_MAP = {
-  "ロボット":       "assets/robot/idle/character_robot_idle0.png",
-  "モンスター":     "assets/enemy/monster-a/idle/idle1.png",
-  "ポータルキー":   "assets/items/portalkey.png",
-  "ゲートカード":   "assets/items/gatecard.png",
-  "ゴール":         "assets/floor/moon-base2.png",
-  "建設予定地":     "assets/floor/planedsite_goal.png",
-  "ブラスターガン": "assets/weapon/blaster-a.png",
-  "設計図":         "assets/items/blueprint1.png",
-  // "エネルギー":   "assets/ui/energy.png", // 任意: 用意できたら使う
-};
+// ▼ Mission欄のアイコン画像パスは config に集約
+import { MISSION_ICON_MAP } from '../main/config.js';
 /**
  * ミッション欄に表示するアイコンを 1 件登録
  * @param {string} key 表示名（例: "モンスター"）
