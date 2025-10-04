@@ -8,6 +8,7 @@ import * as Inter from './modules/interactions.js';
 import * as Warp from './modules/warp.js';
 import * as Builder from './modules/builder.js';
 import * as UI from './modules/ui.js';
+import { createCoreAnimations } from './modules/animations.js';
 
 const ISO_ARROW = {
   up: 'arrow-nw',   // ↖︎
@@ -80,43 +81,7 @@ async function ensureTextures(scene, keys) {
   }
 }
 
-function createCoreAnimations(scene) {
-  // 二重作成ガード
-  if (scene.sys.game.__hkqAnimsBuilt) return;
-  scene.sys.game.__hkqAnimsBuilt = true;
-
-  const F = (keys) => keys.map(k => ({ key: k }));
-
-  scene.anims.create({
-    key: 'robot_idle',
-    frames: F(['robot_idle0','robot_idle1']),
-    frameRate: 2, repeat: -1
-  });
-  scene.anims.create({
-    key: 'robot_walk',
-    frames: F(['robot_walk0','robot_walk1','robot_walk2','robot_walk3','robot_walk4','robot_walk5','robot_walk6','robot_walk7']),
-    frameRate: 10, repeat: -1
-  });
-  scene.anims.create({
-    key: 'robot_cheer',
-    frames: F(['robot_cheer0','robot_cheer1']),
-    frameRate: 6, repeat: -1
-  });
-  scene.anims.create({
-    key: 'robot_sad',
-    frames: F(['robot_sad0','robot_sad1','robot_sad2']),
-    frameRate: 6, repeat: -1
-  });
-
-  // 任意：モンスターは“存在すれば”作る（無ければスキップ）
-  if (scene.textures.exists('monsterA_idle0') && scene.textures.exists('monsterA_idle1')) {
-    scene.anims.create({
-      key: 'monsterA_idle',
-      frames: F(['monsterA_idle0','monsterA_idle1']),
-      frameRate: 2, repeat: -1
-    });
-  }
-}
+// createCoreAnimations moved to modules/animations.js
 
 export class HkqScene extends Phaser.Scene {
   /**
