@@ -21,13 +21,13 @@ window.HKQ_RUNNER_GEN = 0;
 
 
 /**
- * newRunner(programList) : Interpreter を「新しい世代」で生成
- * @param {HTMLElement} listEl - 実行プログラムの UL 要素
- * @returns {Interpreter}
- * 処理概要:
- *  - 生成時に世代番号を確定
+ * 新しい Interpreter（Runner）の生成
+ * 概要:
+ *  - 生成時に世代番号を確定（HKQ_RUNNER_GEN をインクリメント）
  *  - onTick: 自分の世代でない tick や、カットシーン/ロック中は破棄
  *  - onReset: 共通の clearRunnerQueue → scene.resetLevel を呼ぶ
+ * @param {HTMLElement} listEl - 実行プログラムの UL 要素
+ * @returns {Interpreter} 新規 Runner インスタンス
  */
 function newRunner(listEl) {
   const myGen = ++window.HKQ_RUNNER_GEN; // 新しい世代番号
@@ -108,10 +108,18 @@ const repeatSelect = document.getElementById("repeat-count");
 
 // === 追加: URLハッシュから起動ミッションを選択 ===
 // === ハッシュから levels ファイルを取得 ===
+/**
+ * ハッシュからレベルファイルパスを取得
+ * @returns {string} レベルJSONのパス
+ */
 function getLevelsFileFromHash() {
   const m = (location.hash || "").match(/levels=([^&]+)/);
   return m ? decodeURIComponent(m[1]) : "assets/data/levels-tutorial.json";
 }
+/**
+ * ハッシュから開始ミッション番号を取得
+ * @returns {number} 開始ミッション（0基点）
+ */
 function getStartMissionFromHash() {
   try {
     const m = (location.hash || "").match(/mission=(\d+)/);
@@ -219,8 +227,8 @@ const CMDS = [
 createPalette(paletteRoot, programList, CMDS);
 
 /**
- * replacePaletteTextWithIcons()
- * 処理概要:
+ * パレットのテキストをアイコンへ置換（即時実行）
+ * 概要:
  *  - パレットのテキストボタンを画像アイコンに差し替え
  *  - 角度はアイソメ表示に合わせた方位の画像にマップ
  */
@@ -254,11 +262,12 @@ createPalette(paletteRoot, programList, CMDS);
 })();
 
 /**
- * disableDragAndDrop(root)
- * @param {HTMLElement} root
- * 処理概要:
+ * DnD（ドラッグ&ドロップ）の抑止
+ * 概要:
  *  - ドラッグ & ドロップを全面抑止（モバイルの誤操作対策）
  *  - 既存の .cmd / [data-op] 要素の draggable を無効化
+ * @param {HTMLElement} root - 対象ルート要素
+ * @returns {void}
  */
 function disableDragAndDrop(root) {
   if (!root) return;
@@ -282,10 +291,12 @@ paletteRoot?.querySelectorAll(".cmd, [data-op]").forEach((el) => {
 });
 
 /**
- * buildCmdNode(label, op)
- * @returns {HTMLLIElement|null}
- * 処理概要:
+ * Program用コマンド要素の生成
+ * 概要:
  *  - Program リストへ挿入する単一コマンド要素を生成
+ * @param {string} label - 表示ラベル
+ * @param {string} op - 内部オペレーションキー
+ * @returns {HTMLLIElement|null} 生成した LI 要素
  */
 function buildCmdNode(label, op) {
   if (!op) return null;
@@ -301,12 +312,13 @@ function buildCmdNode(label, op) {
 let recordingRepeat = null;
 
 /**
- * createRepeatBlock(defaultCount)
- * @returns {HTMLLIElement|null}
- * 処理概要:
+ * くり返しブロックの作成
+ * 概要:
  *  - トップレベルに「くり返し」ブロックを追加
  *  - iOS キーボード対策として select(2〜10) を採用
  *  - command-limit による上限チェックに失敗したら中止
+ * @param {number} [defaultCount=2] - 初期回数
+ * @returns {HTMLLIElement|null} 作成したブロック要素
  */
 function createRepeatBlock(defaultCount = 2) {
   const block = document.createElement("li");
@@ -355,10 +367,11 @@ function createRepeatBlock(defaultCount = 2) {
 }
 
 /**
- * dispatchOnce(handler)
- * @returns {Function} - 多重クリック防止ラッパ
- * 処理概要:
+ * 多重クリック防止ラッパの生成
+ * 概要:
  *  - 150ms / 4px 以内の重複イベントを無効化
+ * @param {(ev:Event)=>void} handler - 元のハンドラ
+ * @returns {(ev:Event)=>void} ラップされたハンドラ
  */
 function dispatchOnce(handler) {
   let _lastEvt = { t: 0, x: 0, y: 0 };
@@ -376,10 +389,12 @@ function dispatchOnce(handler) {
 
 
 /**
- * onProgramTap(ev)
- * 処理概要:
+ * Programリストのタップ処理
+ * 概要:
  *  - Program 内の単一コマンド（.cmd）を削除
  *  - くり返しブロックは End ボタンで閉じる（ここでは削除しない）
+ * @param {Event} ev - クリック/タップイベント
+ * @returns {void}
  */
 function onProgramTap(ev) {
   if (document.body.classList.contains("ui-locked")) return;
@@ -419,11 +434,11 @@ document.addEventListener('hkq:mission-start', (e)=>{
 
 /**
  * 実行系ボタン: run / step / stop / exit
- * 処理概要:
+ * 概要:
  *  - run: select の回数を読み、Runner.run を実行
  *  - step: 1 ステップだけ進める
  *  - stop: clearRunnerQueue（停止→UI初期化→新 Runner）
- *  - exit: 停止→UI空→残数更新→ミッション 1 へ
+ *  - exit: 停止→UI空→残数更新→マップへ遷移
  */
 runBtn?.addEventListener("click", () => {
   // ▼追加：押下ごとにライフ-1
@@ -468,7 +483,7 @@ const clearBtn = document.getElementById("btn-clear-commands");
     document.dispatchEvent(new CustomEvent("hkq:commands-cleared"));
 });
 /**
- * onPalettePress(ev)
+ * パレット押下処理
  * 役割:
  *  - パレットのボタンを Program に追加するメインハンドラ
  *  - 「くり返し」はブロックを作成（入れ子禁止）
@@ -479,6 +494,8 @@ const clearBtn = document.getElementById("btn-clear-commands");
  *  - くり返し録画中は addInsideRepeat?.() の戻り値を見て、
  *    undefined（APIなし）のときだけ直挿し、false（上限超過）は挿入しない
  *  - トップレベルも addTopLevelCmd?.() が false/undefined のとき直挿しする
+ * @param {Event} ev - クリック/タップイベント
+ * @returns {void}
  */
 function onPalettePress(ev) {
   if (document.body.classList.contains("ui-locked")) return;
@@ -524,7 +541,7 @@ function onPalettePress(ev) {
 }
 /**
  * シーンからのロック/アンロック通知
- * 処理概要:
+ * 概要:
  *  - カットシーン開始/終了などで UI を無効/有効化
  */
 document.addEventListener("hkq:lock", () => document.body.classList.add("ui-locked"));
@@ -541,6 +558,15 @@ document.addEventListener("hkq:reach-goal", () => {
   console.log("【DEBUG】hkq:reach-goal event → ゴール成功マーク");
 });
 
+/**
+ * Runner 停止監視とフォールバッククリア
+ * 概要:
+ *  - Runner の自然停止またはクリアイベントを待ち合わせ、UI同期を行う
+ *  - タイムアウト時はフォールバックで解放
+ * @param {Phaser.Scene} scene - シーン参照
+ * @param {{timeoutMs?:number}} [options] - タイムアウト設定（ms）
+ * @returns {Promise<any>} 待機結果
+ */
 async function watchRunnerIdleAndClear(scene, { timeoutMs = 4000 } = {}) {
   __HKQ_DBG_LOG('watchRunnerIdleAndClear: ENTER');
 
@@ -579,7 +605,11 @@ async function watchRunnerIdleAndClear(scene, { timeoutMs = 4000 } = {}) {
 }
 
 
-// JSONから初期ライフ(count)を読むヘルパ
+/**
+ * JSONから初期ライフ(count)を取得
+ * @param {any} level - レベル定義
+ * @returns {number} 初期ライフ数（デフォルト3）
+ */
 function getLifeCountFrom(level){
   const list = []
     .concat(Array.isArray(level?.conditions) ? level.conditions : [])
@@ -589,11 +619,19 @@ function getLifeCountFrom(level){
   return (Number.isFinite(n) && n > 0) ? n : 3;
 }
 
-// HUD（Missionパネル）のライフ表示を更新
+/**
+ * HUDのライフ表示を更新
+ * @param {number} value - 現在ライフ
+ * @returns {void}
+ */
 function syncLifeToMission(value){
   document.dispatchEvent(new CustomEvent('hkq:life-changed', { detail:{ value } }));
 }
 
+/**
+ * 「コマンドクリア」ボタンの生成と動作設定
+ * @returns {void}
+ */
 function setupClearCommandsButton(){
   // 二重生成ガード
   if (document.getElementById('btn-clear-commands')) return;

@@ -1,8 +1,8 @@
-// 画像タイル種別 → ミッションIDまたはIDプレフィックス
-// ※ hkq-levels.json の "id" を起点に検索します。
-//   - moonland    : T1… の最初のチュートリアル
-//   - planed-area : B1… 設計図ミッション
-//   - moon-alien  : M1… モンスター初回
+// 画像タイル種別 → 表示タイトル（カテゴリ名）
+// ※ プレイ前確認モーダルに表示するタイトル。
+//   - moonland    : 基礎編：くり返しコマンドの使い方
+//   - planed-area : 応用編：実験棟建設
+//   - moon-alien  : 応用編：宇宙人戦
 const TILE_TO_LEVEL_ID_PREFIX = {
   "moonland":    "基礎編：くり返しコマンドの使い方", 
   "planed-area": "応用編：実験棟建設",
@@ -15,7 +15,7 @@ const TILE_TO_LEVEL_ID_PREFIX = {
   "moon-base":   "基礎編：方向コマンドの使い方"
 };
 
-// タイルにカテゴリファイルを割り当て
+// タイルにカテゴリJSONファイルを割り当て
 const TILE_TO_LEVEL_FILE = {
   "moonland":    "assets/data/levels-tutorial2.json",
   "moon-alien":  "assets/data//levels-monster.json",
@@ -28,7 +28,7 @@ const TILE_TO_LEVEL_FILE = {
   "moon-base":   "assets/data//levels-tutorial1.json"
 };
 
-// 追加：モーダル参照
+// モーダル参照要素
 const $ov   = document.getElementById('confirm-overlay');
 const $ttl  = document.getElementById('confirm-title');
 const $desc = document.getElementById('confirm-desc');
@@ -38,7 +38,13 @@ const $back = document.getElementById('btn-cancel');
 // 内部状態：選ばれたタイル（遷移先）を保持
 let _pendingTarget = null;
 
-// 追加：表示/非表示
+/**
+ * 確認モーダルを開く。
+ * @param {string} title モーダルタイトル（未指定時は『ミッション』）。
+ * @param {string} desc 説明文（未指定時は既定文）。
+ * @param {HTMLElement} [targetEl] 遷移対象となるセル要素。
+ * @returns {void}
+ */
 function openConfirm(title, desc, targetEl) {
   _pendingTarget = targetEl || null;
   $ttl.textContent  = title || 'ミッション';
@@ -48,12 +54,16 @@ function openConfirm(title, desc, targetEl) {
   // フォーカス誘導（アクセシビリティ）
   setTimeout(()=> $play?.focus(), 0);
 }
+/**
+ * 確認モーダルを閉じる。
+ * @returns {void}
+ */
 function closeConfirm() {
   _pendingTarget = null;
   $ov.hidden = true;
 }
 
-// 追加：「プレイする」→ 実際に遷移
+// 「プレイする」→ 実際に遷移
 $play?.addEventListener('click', () => {
   if (!_pendingTarget) return closeConfirm();
 
@@ -71,10 +81,10 @@ $play?.addEventListener('click', () => {
   closeConfirm();
 });
 
-// 追加：「マップへもどる」
+// 「マップへもどる」
 $back?.addEventListener('click', () => closeConfirm());
 
-// 追加：Escで閉じる / Enterで実行
+// Escで閉じる / Enterで実行
 document.addEventListener('keydown', (e) => {
   if ($ov.hidden) return;
   if (e.key === 'Escape') { e.preventDefault(); closeConfirm(); }
@@ -88,6 +98,13 @@ async function loadLevels() {
   return await res.json();
 }
 */
+/**
+ * レベルIDの先頭一致（なければ含有一致）で最初のインデックスを返す。
+ * 一致しない場合は 0 を返す。
+ * @param {Array<{id?: string}>} levels レベル配列。
+ * @param {string} prefix 先頭一致に使用するプレフィックス。
+ * @returns {number} 見つかったインデックス。見つからなければ 0。
+ */
 function findLevelIndexByPrefix(levels, prefix) {
   if (!prefix) {
     console.log("【MAP DEBUG】prefixが空 → idx=0");
@@ -112,6 +129,10 @@ function findLevelIndexByPrefix(levels, prefix) {
   return 0;
 }
 
+/**
+ * `.cell` の `background-image` を先読みして、初回描画のチラつきを抑える。
+ * @returns {void}
+ */
 function imgPreload() {
   document.querySelectorAll(".cell").forEach(el => {
     const url = getComputedStyle(el).backgroundImage.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
@@ -120,6 +141,10 @@ function imgPreload() {
   });
 }
 
+/**
+ * 画面初期化：画像プリロードとクリックハンドラ登録。
+ * @returns {Promise<void>}
+ */
 (async function init(){
   imgPreload();
   document.addEventListener('click', (ev) => {

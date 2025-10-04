@@ -1,6 +1,9 @@
 // hkq-mission.js — Mission UI / conditions evaluator / HUD sync
 
-// --- simple DOM ready helper (idempotent) ---
+/**
+ * DOM 準備完了を待ってから関数を実行（多重呼び出しでも安全）
+ * @param {() => void} fn 実行する関数
+ */
 function onDOMReady(fn){
   if (document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', fn, { once:true });
@@ -21,13 +24,26 @@ export const MISSION_ICON_MAP = {
   "設計図":         "assets/items/blueprint1.png",
   // "エネルギー":   "assets/ui/energy.png", // 任意: 用意できたら使う
 };
+/**
+ * ミッション欄に表示するアイコンを 1 件登録
+ * @param {string} key 表示名（例: "モンスター"）
+ * @param {string} path 画像パス
+ */
 export function registerMissionIcon(key, path){ MISSION_ICON_MAP[key] = path; }
+/**
+ * ミッション欄に表示するアイコンを複数まとめて登録
+ * @param {{[k:string]: string}} dict キー:パスの辞書
+ */
 export function registerMissionIcons(dict){ Object.assign(MISSION_ICON_MAP, dict); }
 
 // デフォルトライフ値
 export const DEFAULT_LIFE = 3;
 
-// JSONからライフ最大値を取得
+/**
+ * レベル定義(JSON)からライフ最大値を取得
+ * @param {any} level レベル定義オブジェクト
+ * @returns {number} ライフ最大値（不正時は DEFAULT_LIFE）
+ */
 export function getLifeCountFrom(level){
   const list = []
     .concat(Array.isArray(level?.conditions) ? level.conditions : [])
@@ -37,7 +53,13 @@ export function getLifeCountFrom(level){
   return (Number.isFinite(n) && n > 0) ? n : DEFAULT_LIFE;
 }
 
+/**
+ * ミッション表示・条件評価・HUD 同期を司るクラス
+ */
 export class Mission {
+  /**
+   * @param {any} level レベル定義オブジェクト
+   */
   constructor(level){
     this.level = level || null;
     this.lifeMax = getLifeCountFrom(this.level);
@@ -54,7 +76,9 @@ export class Mission {
   }
 
   /**
-   * DOMが用意され、HUD要素が存在するときだけ初期化（再入しても安全）
+   * DOM が用意され、HUD 要素が存在するときだけ初期化（再入しても安全）
+   * @private
+   * @returns {void}
    */
   _initHudWhenReady(){
     if (this._hudInitDone) return;
@@ -80,6 +104,9 @@ export class Mission {
   /**
    * ミッションパネルの可視状態を強制同期
    * - hidden 属性 / .is-hidden / .collapsed / style.display を一括管理
+   * @private
+   * @param {boolean} on 表示するか
+   * @returns {void}
    */
   _setMissionPanelVisible(on){
     const btn = document.getElementById('btn-toggle-mission');
@@ -102,9 +129,11 @@ export class Mission {
     }
   }
 
-  /* ------------------------------------------------------------------------ *
-   * Events bridge (DOM CustomEvents)
-   * ------------------------------------------------------------------------ */
+  /**
+   * DOM の CustomEvent を受けて内部状態と HUD を同期
+   * @private
+   * @returns {void}
+   */
   _bindEvents(){
     this._handlers = {
       start : (e)=>{
@@ -162,6 +191,8 @@ export class Mission {
    * - aria-pressed=true なら「ミッションタスク非表示」
    * - aria-pressed=false なら「ミッションタスク表示」
    * - 可能なら対象パネルの開閉もここで制御（既存実装があっても二重にならないよう class+hidden を統一）
+   * @private
+   * @returns {void}
    */
   _initMissionToggleButton(){
     const btn = document.getElementById('btn-toggle-mission');
@@ -217,6 +248,10 @@ export class Mission {
     document.addEventListener('keydown', this._onMissionKey);
   }
 
+  /**
+   * イベント購読を解除
+   * @returns {void}
+   */
   dispose(){
     if (!this._handlers) return;
     document.removeEventListener('hkq:mission-start', this._handlers.start);
@@ -228,9 +263,11 @@ export class Mission {
     this._handlers = null;
   }
 
-  /* ------------------------------------------------------------------------ *
-   * State reset
-   * ------------------------------------------------------------------------ */
+  /**
+   * 内部状態を初期化して HUD を再描画
+   * @param {any} level レベル定義（省略時は前回値）
+   * @returns {void}
+   */
   reset(level){
     this.level = level || this.level || {};
     this.lifeMax = getLifeCountFrom(this.level);
@@ -251,10 +288,14 @@ export class Mission {
     this.renderMissionPanel();
   }
 
-  /* ------------------------------------------------------------------------ *
-   * Conditions evaluator (UI side)
+  /**
+   * 1 条件の評価ロジック
    * - ゲーム本体（scene）から inventory / reachedGoal を受け取り評価
-   * ------------------------------------------------------------------------ */
+   * @private
+   * @param {{type:string, id?:string, item?:string, count?:number, requires?:string[], text?:string}} c 条件
+   * @param {{inventory?:Object, reachedGoal?:boolean}} ctx 評価用コンテキスト
+   * @returns {boolean} 条件を満たすか
+   */
   _ok(c, ctx){
     switch (c.type) {
       case 'obtain': {
@@ -287,6 +328,11 @@ export class Mission {
     }
   }
 
+  /**
+   * クリア条件を評価
+   * @param {{inventory?:Object, progress?:{reachedGoal?:boolean}}} [ctx] 外部から与える状態（任意）
+   * @returns {{done:boolean, results:{id?:string, type:string, ok:boolean, text:string}[]}}
+   */
   evaluate(ctx = {}){
     const evalCtx = {
       inventory  : ctx.inventory || this.progress.inventory || {},
@@ -307,6 +353,11 @@ export class Mission {
     return { done, results };
   }
 
+  /**
+   * クリア条件表示（チェックリスト）を更新
+   * @param {boolean} [fireClear=false] すべて達成時にイベント `hkq:mission-cleared` を発火
+   * @returns {void}
+   */
   render(fireClear=false){
     const el = document.getElementById('mission-clear-text');
     if (!el) return;
@@ -324,9 +375,11 @@ export class Mission {
     }
   }
 
-  /* ------------------------------------------------------------------------ *
-   * Mission panel (icon + text list)
-   * ------------------------------------------------------------------------ */
+  /**
+   * ミッションパネル（アイコン + テキストリスト）を再描画
+   * @param {{iconSize?:number}} [options]
+   * @returns {void}
+   */
   renderMissionPanel(options = {}){
     const panel = document.getElementById('mission-panel');
     if (!panel) return;
@@ -379,6 +432,11 @@ export class Mission {
     panel.appendChild(ul);
   }
 
+  /**
+   * ミッションパネルに表示する行データを組み立てる
+   * @private
+   * @returns {{key:string|null, label:string, meta?:string, iconPath?:string, size?:number}[]} 行配列
+   */
   _buildMissionItems(){
     const L = this.level || {};
     const lines = [];
@@ -439,6 +497,8 @@ export class Mission {
     /**
    * ボタンの aria-pressed 状態から、対象パネルの可視状態を同期する
    * - 既存の hidden / is-hidden / style.display のいずれにも対応
+   * @private
+   * @returns {void}
    */
   _syncMissionPanelFromAria(){
     const btn = document.getElementById('btn-toggle-mission');

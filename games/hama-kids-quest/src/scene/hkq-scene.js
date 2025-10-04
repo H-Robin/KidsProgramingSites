@@ -3,6 +3,11 @@ import { isoX, isoY, fieldSize } from '../render/iso-math.js';
 import { buildTileLayer } from '../render/tilemap-renderer.js';
 import { loadLevels, pickGoalFromSpec } from '../data/level-loader.js';
 import { Mission, getLifeCountFrom } from './hkq-mission.js';
+import * as Cut from './modules/cutscene.js';
+import * as Inter from './modules/interactions.js';
+import * as Warp from './modules/warp.js';
+import * as Builder from './modules/builder.js';
+import * as UI from './modules/ui.js';
 
 const ISO_ARROW = {
   up: 'arrow-nw',   // ↖︎
@@ -209,10 +214,11 @@ export class HkqScene extends Phaser.Scene {
   // ---- Assets -------------------------------------------------------------
 
   /**
-   * preload()
-   * 処理概要:
+   * アセットの事前読み込み
+   * 概要:
    *  - レベルデータ（JSON）と各種アセット（ロボ/敵/床/ゴール/矢印/背景）をロード
    *  - 画像はキー名で参照できるよう登録
+   * @returns {void}
    */
   preload() {
     //this.load.json('levels', 'assets/data/hkq-levels.json');
@@ -260,194 +266,49 @@ export class HkqScene extends Phaser.Scene {
     
   // ---- Cutscenes (success / mid / fail) ----------------------------------
 
-  // 条件1件を見つける
-  getCondition(predicate) {
-    const list = this.getConditionsList();
-    return Array.isArray(list) ? (list.find(predicate) || null) : null;
-  }
-
-  // 条件の cutscene パスを取る（success/fail）
-  getCondCutscene(cond, resultType) {
-    return cond?.cutscenes?.[resultType] || null;
-  }
-
-  // カテゴリ（battle/goal 等）デフォルトを取る（success/fail）
-  getDefaultCutscene(category, resultType) {
-    return this.level?.defaults?.cutscenes?.[category]?.[resultType] || null;
-  }
-  // レベル内の conditions を合算（トップ/clear 両方を見る）
-  getConditionsList() {
-    const list = [];
-    const a = this.level?.conditions;
-    if (Array.isArray(a)) list.push(...a);
-    const b = this.level?.clear?.conditions;
-    if (Array.isArray(b)) list.push(...b);
-    return list;
-  }
+  // 条件/Cutscene ユーティリティ（委譲）
+  getCondition(predicate) { return Cut.getCondition(this, predicate); }
+  getCondCutscene(cond, resultType) { return Cut.getCondCutscene(cond, resultType); }
+  getDefaultCutscene(category, resultType) { return Cut.getDefaultCutscene(this, category, resultType); }
+  getConditionsList() { return Cut.getConditionsList(this); }
   /**
-   * playCutsceneThen(next)
-   * 処理概要:
+   * 成功カットシーンの再生とコールバック実行
+   * 概要:
    *  - レベル定義のカットシーン画像を全画面表示（In→Hold→Out）
    *  - 再生中は lock、終了時に unlock → next() を呼ぶ
-   * @param {Function} next - 再生完了後のコールバック
+   * @param {Function} [next] - 再生完了後のコールバック
+   * @param {string}   [overridePath] - 画像パスの上書き（省略時はレベル定義を使用）
+   * @returns {void}
    */
   // 新: 第2引数 overridePath でパス上書き可
-  playCutsceneThen(next, overridePath) {
-    const imgPath = overridePath || this.level?.cutscene?.image || null;
-    if (!imgPath) { next?.(); return; }
-
-    const texKey = `cutscene:${imgPath}`;
-    const startShow = () => {
-      const cam = this.cameras.main;
-      const cx = cam.worldView.centerX ?? cam.centerX;
-      const cy = cam.worldView.centerY ?? cam.centerY;
-
-      const node = this.add.image(cx, cy, texKey)
-        .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
-
-      const vw = cam.width, vh = cam.height;
-      const iw = node.width || 1024, ih = node.height || 512;
-      node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
-
-      this._cutscenePlaying = true;
-      this.lockGame();
-      document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
-
-      this.tweens.add({
-        targets: node, alpha: 1, duration: 500, ease: 'quad.out',
-        onComplete: () => {
-          this.time.delayedCall(1000, () => {
-            this.tweens.add({
-              targets: node, alpha: 0, duration: 500, ease: 'quad.in',
-              onComplete: () => {
-                node.destroy();
-                this._cutscenePlaying = false;
-                this.unlockGame();
-                document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
-                next?.();
-              }
-            });
-          });
-        }
-      });
-    };
-
-    if (this.textures.exists(texKey)) startShow();
-    else { this.load.once('complete', startShow); this.load.image(texKey, imgPath); this.load.start(); }
-  }
+  playCutsceneThen(next, overridePath) { return Cut.playCutsceneThen(this, next, overridePath); }
   /**
-   * playMidCutscene(path, next)
-   * 処理概要:
+   * 途中（ミッド）カットシーンの再生
+   * 概要:
    *  - 途中演出のカットシーンを表示（lock/unlock は成功と同じ）
    * @param {string} path  - 画像ファイルパス
-   * @param {Function} next - 再生完了後のコールバック
+   * @param {Function} [next] - 再生完了後のコールバック
+   * @returns {void}
    */
-    playMidCutscene(path, next) {
-    if (this._cutscenePlaying) return;
-    if (!path) { next?.(); return; }
-
-    const texKey = `mid:${path}`;
-    const startShow = () => {
-      const cam = this.cameras.main;
-      const cx = cam.worldView.centerX ?? cam.centerX;
-      const cy = cam.worldView.centerY ?? cam.centerY;
-
-      const node = this.add.image(cx, cy, texKey)
-        .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
-
-      const vw = cam.width, vh = cam.height;
-      const iw = node.width || 1024, ih = node.height || 512;
-      node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
-
-      // 開始で lock
-      this._cutscenePlaying = true;
-      this.lockGame();
-      document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
-
-      this.tweens.add({
-        targets: node, alpha: 1, duration: 500, ease: 'quad.out',
-        onComplete: () => {
-          this.time.delayedCall(1000, () => {
-            this.tweens.add({
-              targets: node, alpha: 0, duration: 500, ease: 'quad.in',
-              onComplete: () => {
-                node.destroy();
-                // 終了で unlock
-                this._cutscenePlaying = false;
-                this.unlockGame();
-                document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
-                next?.();
-              }
-            });
-          });
-        }
-      });
-    };
-
-    if (this.textures.exists(texKey)) startShow();
-    else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
-  }
+    playMidCutscene(path, next) { return Cut.playMidCutscene(this, path, next); }
 
   /**
-   * playFailCutscene(path, next)
-   * 処理概要:
+   * 失敗カットシーンの再生
+   * 概要:
    *  - 失敗演出のカットシーンを表示（最後に Runner キューを確実にクリア）
    *  - 終了時に unlock し、next() を呼ぶ（多くは restart）
-   * @param {string} path
-   * @param {Function} next
+   * @param {string} path - 画像ファイルパス
+   * @param {Function} [next] - 再生完了後のコールバック
+   * @returns {void}
    */
-  playFailCutscene(path, next) {
-    if (!path) { next?.(); return; }
-
-    const texKey = `fail:${path}`;
-    const startShow = () => {
-      const cam = this.cameras.main;
-      const cx = cam.worldView.centerX ?? cam.centerX;
-      const cy = cam.worldView.centerY ?? cam.centerY;
-
-      const node = this.add.image(cx, cy, texKey)
-        .setScrollFactor(0).setDepth(10000).setOrigin(0.5, 0.5).setAlpha(0);
-
-      const vw = cam.width, vh = cam.height;
-      const iw = node.width || 1024, ih = node.height || 512;
-      node.setScale(Math.min(vw * 0.95 / iw, vh * 0.95 / ih));
-
-      // 開始で lock
-      this._cutscenePlaying = true;
-      this.lockGame();
-      document.dispatchEvent(new CustomEvent('hkq:lock', { detail: { reason: 'cutscene' } }));
-
-      this.tweens.add({
-        targets: node, alpha: 1, duration: 500, ease: 'quad.out',
-        onComplete: () => {
-          this.time.delayedCall(1300, () => {
-            this.tweens.add({
-              targets: node, alpha: 0, duration: 500, ease: 'quad.in',
-              onComplete: () => {
-                node.destroy();
-                // restart 前に必ずキューを空にする
-                this.clearRunnerQueue();
-                // 終了で unlock
-                this._cutscenePlaying = false;
-                this.unlockGame();
-                document.dispatchEvent(new CustomEvent('hkq:unlock', { detail: { reason: 'cutscene' } }));
-                next?.();
-              }
-            });
-          });
-        }
-      });
-    };
-
-    if (this.textures.exists(texKey)) startShow();
-    else { this.load.once('complete', startShow); this.load.image(texKey, path); this.load.start(); }
-  }
+  playFailCutscene(path, next) { return Cut.playFailCutscene(this, path, next); }
 
   /**
-   * init(data)
-   * 処理概要:
+   * シーン初期化（restart 時の引き継ぎ）
+   * 概要:
    *  - restart 時に渡された missionIndex を引き継ぐ
-   * @param {{missionIndex?:number}} data
+   * @param {{missionIndex?:number}} [data]
+   * @returns {void}
    */
   init(data) {
     if (data && Number.isFinite(data.missionIndex)) {
@@ -458,11 +319,12 @@ export class HkqScene extends Phaser.Scene {
   // ---- Scene lifecycle ----------------------------------------------------
 
   /**
-   * create()
-   * 処理概要:
+   * シーン生成（Phaser lifecycle）
+   * 概要:
    *  - レベルデータ読込・ミッション番号の安全化
    *  - アニメーション一度だけ構築 → レベル生成 → 背景反映
-   *  - 画面リサイズ時にレベルと背景を再構成
+   *  - 画面リサイズ時に背景のみ調整
+   * @returns {void}
    */
   create() {
     if (!Number.isFinite(this.missionIndex)) this.missionIndex = 0;
@@ -524,9 +386,13 @@ export class HkqScene extends Phaser.Scene {
 
 
   /**
-   * showDirectionIcon(dirKey, cellX, cellY)
-   * 処理概要:
+   * 方向アイコンの一時表示
+   * 概要:
    *  - 一手の移動時にアイソメ矢印をふわっと表示 → 自動消滅
+   * @param {'up'|'down'|'left'|'right'} dirKey - 方向キー
+   * @param {number} cellX - グリッドX
+   * @param {number} cellY - グリッドY
+   * @returns {void}
    */
   showDirectionIcon(dirKey, cellX, cellY) {
     const key = ISO_ARROW[dirKey];
@@ -572,7 +438,13 @@ export class HkqScene extends Phaser.Scene {
     });
   }
 
-    /** アニメ再生の安全ヘルパ */
+    /**
+     * アニメ再生の安全ヘルパ
+     * @param {Phaser.GameObjects.Sprite} spr - スプライト
+     * @param {string} key - アニメーションキー
+     * @param {string} [fallbackFrameKey] - 未登録時に使用する静的フレームキー
+     * @returns {void}
+     */
   safePlay(spr, key, fallbackFrameKey) {
     if (!spr) return;
     if (this.anims?.exists?.(key)) {
@@ -583,9 +455,20 @@ export class HkqScene extends Phaser.Scene {
     }
   }
 
-  /** snap(v): ピクセル位置の丸め */
+  /**
+   * ピクセル位置の丸め
+   * @param {number} v - 値
+   * @returns {number} 丸め後の値
+   */
   snap(v) { return Math.round(v); }
 
+  /**
+   * ピックアップの配置
+   * @param {{x?:number,y?:number}} def - 定義（座標が無ければ空きマスへ）
+   * @param {string} texKey - テクスチャキー
+   * @param {(cell:{x:number,y:number}, spr:Phaser.GameObjects.Sprite)=>void} setTo - 参照を保持するsetter
+   * @returns {void}
+   */
   placePickup(def, texKey, setTo) {
     // 座標があればそのマス、なければ空きマス
     const cell = (Number.isFinite(def.x) && Number.isFinite(def.y))
@@ -604,12 +487,13 @@ export class HkqScene extends Phaser.Scene {
   // ---- Build a level ------------------------------------------------------
 
   /**
-   * buildLevel(showTitle)
-   * 処理概要:
+   * レベル構築
+   * 概要:
    *  - Runner キューの完全クリア（前ミッション残りを無効化）
    *  - グリッド/開始位置/コマンド上限/背景など、レベル要素を組み立て
    *  - UI へ上限を通知し、タイトル表示やインベントリも初期化
    * @param {boolean} showTitle - タイトル演出を表示するか
+   * @returns {void}
    */
   buildLevel(showTitle) {
     console.log('[DBG] buildLevel once:',
@@ -1012,277 +896,41 @@ export class HkqScene extends Phaser.Scene {
   }
 
   /**
-   * isAtGoal()
-   * 処理概要:
+   * ゴール到達判定
+   * 概要:
    *  - ロボの現在セル/座標がゴールに到達しているかを厳密/近似で判定
-   * @returns {boolean}
+   * @returns {boolean} 到達していれば true
    */
-  isAtGoal() {
-    if (!this.goalCell || !this.robotCell) return false;
-    if (this.robotCell.x === this.goalCell.x && this.robotCell.y === this.goalCell.y) return true;
-    if (this.robotSpr && this.goalSpr) {
-      const dx = Math.abs(this.robotSpr.x - this.goalSpr.x);
-      const dy = Math.abs(this.robotSpr.y - this.goalSpr.y);
-      const tol = Math.max(2, Math.floor(this.cellSize * 0.2));
-      return dx <= tol && dy <= tol;
-    }
-    return false;
-  }
+  isAtGoal() { return Inter.isAtGoal(this); }
 
   /**
-   * handleGoalReached()
-   * 処理概要:
+   * ゴール到達時の処理
+   * 概要:
    *  - ゴール到達時の演出 → 次ミッション/リセットへ遷移
    *  - 最終面ならコンプリート後に1面へ戻る
+   * @returns {void}
    */
-  handleGoalReached() {
-    this._cleared = true;
-    this.safePlay(this.robotSpr, 'robot_cheer', 'robot_cheer0');
-    document.dispatchEvent(new CustomEvent('hkq:mission-cleared', {
-      detail: { mission: this.missionIndex }
-    }));
-    this.time.delayedCall(900, () => {
-      this.safePlay(this.robotSpr, 'robot_cheer', 'robot_cheer0');
-      this.time.delayedCall(900, () => {
-        const last = (this.levels?.length || 1) - 1;
-        if (this.missionIndex < last) {
-          const nextIdx = this.missionIndex + 1;
-          const nextTitle = `ミッション ${nextIdx + 1}: ${this.levels[nextIdx]?.id ?? ''}`;
-          this.showMissionTitle(nextTitle, () => {
-            this.missionIndex = nextIdx;
-            this.buildLevel(true);
-          });
-        } else {
-          this.showMissionTitle('Mission Complete!', () => {
-            this.missionIndex = 0;
-            this.buildLevel(true);
-          });
-        }
-      });
-    });
-  }
+  handleGoalReached() { return Inter.handleGoalReached(this); }
 
   // ---- Tick (one op) ------------------------------------------------------
 
   /**
-   * onTick(op)
-   * 処理概要:
+   * 1手（Tick）の処理
+   * 概要:
    *  - 1手（↑↓→←）を処理。移動・演出・ピックアップ・敵判定・ゴール判定を包括
    *  - カットシーン中/ロック中/クリア後は進めない
-   * @param {string} op - 入力（'up'/'down'/'left'/'right' ほか日本語/矢印記号も許容）
+   * @param {'up'|'down'|'left'|'right'|'↑'|'↓'|'→'|'←'|'まえ'|'うしろ'|'みぎ'|'ひだり'} op - 入力
+   * @returns {void}
    */
-  onTick(op) {
-    if (this._cleared) return;
-    if (this._cutscenePlaying || this._inputLocked) return;
-
-    const DIR = {
-      up: { dx: 0, dy: -1 }, down: { dx: 0, dy: 1 },
-      right: { dx: 1, dy: 0 }, left: { dx: -1, dy: 0 },
-      '↑': { dx: 0, dy: -1 }, '↓': { dx: 0, dy: 1 },
-      '→': { dx: 1, dy: 0 }, '←': { dx: -1, dy: 0 },
-      まえ: { dx: 0, dy: -1 }, うしろ: { dx: 0, dy: 1 },
-      みぎ: { dx: 1, dy: 0 }, ひだり: { dx: -1, dy: 0 },
-    };
-    const dir = DIR[op];
-    if (!dir) return;
-
-    const nx = Phaser.Math.Clamp(this.robotCell.x + dir.dx, 0, this.gridW - 1);
-    const ny = Phaser.Math.Clamp(this.robotCell.y + dir.dy, 0, this.gridH - 1);
-
-    // === 進行先の通行可否を先に確認 ===
-    if (!this.canEnter(nx, ny)) {
-      this.showDirectionIcon(op, nx, ny);
-      this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
-
-      // 軽いバンプ演出（行き先へ少しだけ動いて戻す）
-      const p1 = this.cellToXY(nx, ny);
-      const back = this.cellToXY(this.robotCell.x, this.robotCell.y);
-      this.tweens.add({
-        targets: this.robotSpr,
-        x: this.snap(p1.x), y: this.snap(p1.y),
-        duration: 120, yoyo: true, repeat: 0, ease: 'quad.out',
-        onComplete: () => document.dispatchEvent(new CustomEvent('hkq:tick'))
-      });
-      return;
-    }
-
-    // ここで初めてセルを更新（通行可の場合）
-    this.robotCell = { x: nx, y: ny };
-
-    document.dispatchEvent(new CustomEvent('hkq:move', { detail: { pos: { x: nx, y: ny } } }));
-
-    this.showDirectionIcon(op, nx, ny);
-
-    const p = this.cellToXY(nx, ny);
-    this.safePlay(this.robotSpr, 'robot_walk', 'robot_walk0');
-    this.tweens.add({
-      targets: this.robotSpr,
-      x: this.snap(p.x), y: this.snap(p.y),
-      duration: 260, ease: 'quad.out',
-      onComplete: () => {
-        if (this._cleared) return;
-
-        const cx = nx, cy = ny;
-
-        // 1) 武器ピックアップ
-        if (this.weaponCell && cx === this.weaponCell.x && cy === this.weaponCell.y && !this.inventory.weapon) {
-          this.inventory.weapon = true;
-          try { this.weaponSpr?.destroy(); } catch(_) {}
-          this.weaponSpr = null;
-          this.renderItemBox();
-          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'weapon' } }));
-        }
-
-        // 2) 敵
-        const enemy = (this.monsters || []).find(m => m.cell.x === cx && m.cell.y === cy);
-        if (enemy) {
-          const condGetKey = this.getCondition(c => c.id === 'get_key'); // 条件(敵→キー取得)
-          if (this.inventory.weapon) {
-            // success: 条件→(無ければ)defaults.battle.success
-            const path = this.getCondCutscene(condGetKey, 'success')
-                      || this.getDefaultCutscene('battle', 'success');
-            if (path) {
-              this.playMidCutscene(path, () => {
-                try { enemy.spr.destroy(); } catch(_) {}
-                this.monsters = this.monsters.filter(m => m !== enemy);
-                document.dispatchEvent(new CustomEvent('hkq:enemy-down', { detail: { type: 'monster-a' } }));
-
-                if (!this.inventory.key && !this._hasKeyPickup) {
-                  this.inventory.key = true;
-                  this.renderItemBox();
-                  document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail:{ id:'key' }}));
-                }
-                // キー取得時点で、全ゲートを「開いた見た目」に更新
-                this.refreshGates?.();
-                this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
-                document.dispatchEvent(new CustomEvent('hkq:tick'));
-              });
-            } else {
-              // 画像自体が未設定なら、演出スキップで処理だけ行う
-              try { enemy.spr.destroy(); } catch(_) {}
-              this.monsters = this.monsters.filter(m => m !== enemy);
-              // …(同上の後処理)…
-            }
-            return;
-          } else {
-            // fail: 条件→(無ければ)defaults.battle.fail
-            const path = this.getCondCutscene(condGetKey, 'fail')
-                      || this.getDefaultCutscene('battle', 'fail');
-            if (path) {
-              this.playFailCutscene(path, () => {
-                //this.scene.restart({ missionIndex: this.missionIndex });
-                this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
-              });
-            } else {
-              this.scene.restart({ missionIndex: this.missionIndex });
-            }
-            return;
-          }
-        }
-        // 2.5) 設計図（踏んだら取得）
-        if (this.blueprints?.length) {
-          const hitIndex = this.blueprints.findIndex(b => b.cell.x === cx && b.cell.y === cy);
-          if (hitIndex >= 0) {
-            try { this.blueprints[hitIndex].spr.destroy(); } catch(_) {}
-            this.blueprints.splice(hitIndex, 1);
-            this.inventory.blueprint = Math.min(
-              (this.inventory.blueprint|0) + 1,
-              this.blueprintTotal|0
-            );
-            document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'blueprint' } }));
-
-            // 3枚達成時：条件の success カットシーンを再生（任意）
-            if ((this.inventory.blueprint|0) >= (this.blueprintTotal|0) && this.blueprintTotal > 0) {
-              const condBP = this.getCondition(c => c.id === 'collect_blueprints');
-              const pathBP = this.getCondCutscene(condBP, 'success'); // JSONの cutscenes.success
-              if (pathBP) {
-                this.playMidCutscene(pathBP, () => {
-                  // カットシーン後、通常進行に戻す
-                  this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
-                  document.dispatchEvent(new CustomEvent('hkq:tick'));
-                });
-                return; // ここで一旦止める（演出を優先）
-              }
-            }
-          }
-        }
-        // 3) カードキー（基地ゲート用）
-        if (this.keyCell && cx === this.keyCell.x && cy === this.keyCell.y && !this.inventory.key) {
-          this.inventory.key = true;
-          try { this.keySpr?.destroy(); } catch(_) {}
-          this.keySpr = null;
-          this.renderItemBox();
-          document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'key' } }));
-        }
-        // キー取得: 全ゲートのテクスチャを opened に
-        this.refreshGates?.();
-        // 3.5) ポータルキー（ワープ用）— 複数対応
-        if (this.portalKeys?.length) {
-          const hit = this.portalKeys.findIndex(k => k.cell.x === cx && k.cell.y === cy);
-          if (hit >= 0 && !this.inventory.portalkey) {
-            this.inventory.portalkey = true;
-            try { this.portalKeys[hit].spr?.destroy(); } catch(_) {}
-            this.portalKeys.splice(hit, 1);
-            this.renderItemBox();
-            document.dispatchEvent(new CustomEvent('hkq:item-pick', { detail: { id: 'portalkey' } }));
-          }
-        }
-        // 3.9) ポータル（portalgate）転送
-        if (this.tryWarpAt(cx, cy)) {
-          // 転送が起きたら、このtickはここで終了（次tickへ）
-          return;
-        }
-        // 4) ゴール到達（鍵チェック）
-        if (this.isAtGoal()) {
-          const condReach = this.getCondition(c => c.id === 'reach_goal');
-
-          const pathSuccess = this.getCondCutscene(condReach, 'success')
-                                || this.getDefaultCutscene('goal', 'success')
-                                || this.level?.cutscene?.image || null;
-
-          const pathFail = this.getCondCutscene(condReach, 'fail')
-                              || this.getDefaultCutscene('goal', 'fail');
-
-          // ★ ここで reachedGoal:true を渡すのが重要
-          const result = this.mission.evaluate({
-            inventory: this.inventory,
-            progress: { reachedGoal: true }
-          });
-          console.log("【DEBUG】evaluate result:", result);
-        if (result.done) {
-          // 成功カットシーン
-          document.dispatchEvent(new CustomEvent('hkq:reach-goal', { detail: { pos: { x: cx, y: cy } } }));
-          this.playCutsceneThen(() => this.handleGoalReached(), pathSuccess);
-        } else {
-          // 失敗カットシーン
-          this.safePlay(this.robotSpr, 'robot_sad', 'robot_sad0');
-          if (pathFail) {
-            this.playFailCutscene(pathFail, () => {
-              this.buildLevel(true);  // ← this.scene.restart() の代わりにこちら
-            });
-          } else {
-            this.scene.restart({ missionIndex: this.missionIndex });
-          }
-        }
-          return;
-        }
-        // ライフ0
-        if (Number(window.HKQ_LIFE ?? 3) <= 0){
-          document.dispatchEvent(new CustomEvent('hkq:life-zero'));
-          return;
-        }
-        // 5) 通常
-        this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
-        document.dispatchEvent(new CustomEvent('hkq:tick'));
-      }
-    });
-  }
+  onTick(op) { return Inter.onTick(this, op); }
 
   /**
-   * cellToXY(x,y)
-   * 処理概要:
+   * グリッド座標を画面座標へ変換
+   * 概要:
    *  - グリッド座標→アイソメ座標へ変換（描画用オフセット含む）
-   * @returns {{x:number,y:number}}
+   * @param {number} x - グリッドX
+   * @param {number} y - グリッドY
+   * @returns {{x:number,y:number}} 変換後の座標
    */
   cellToXY(x, y) {
     const sx = isoX(x, y, this._isoW, this._isoH) + (this._baseIsoX || 0);
@@ -1292,9 +940,10 @@ export class HkqScene extends Phaser.Scene {
   }
 
   /**
-   * renderItemBox()
-   * 処理概要:
+   * 所持アイテムUIの反映
+   * 概要:
    *  - 所持中の武器/キーをUIスロットに反映（アイコン画像を差し替え）
+   * @returns {void}
    */
   renderItemBox() {
     const box = document.getElementById('item-box');
@@ -1362,16 +1011,24 @@ export class HkqScene extends Phaser.Scene {
   }
 
   /**
-   * clearRunnerQueue()
-   * 処理概要:
+   * Runner キューの完全クリア
+   * 概要:
    *  - Main 側（window.clearRunnerQueue）に委譲して命令キュー/実行器を完全リセット
    *  - ミッション切替/失敗カットシーン前などで呼ぶ安全フック
+   * @returns {void}
    */
   clearRunnerQueue() {
     window.clearRunnerQueue?.();
   }
 
-    // 進入可否の判定：岩/壁は不可、ゲートは pass 規則＆アイテムで可否
+  /**
+   * 進入可否の判定
+   * 概要:
+   *  - 岩/壁は不可、ゲートは pass 規則＆アイテムで可否
+   * @param {number} x - グリッドX
+   * @param {number} y - グリッドY
+   * @returns {boolean} 進入可能なら true
+   */
   canEnter(x, y) {
     const ob = this.occObstacles?.get?.(this.occKey(x,y));
     if (!ob) return true;
@@ -1390,7 +1047,12 @@ export class HkqScene extends Phaser.Scene {
     return true;
   }
 
-  // 所持鍵に応じてゲートの見た目を一括更新
+  /**
+   * ゲート表示の更新
+   * 概要:
+   *  - 所持鍵に応じてゲートの見た目を一括更新
+   * @returns {void}
+   */
   refreshGates() {
     if (!Array.isArray(this.obstacles)) return;
     const opened = !!this.inventory?.key;
@@ -1401,96 +1063,22 @@ export class HkqScene extends Phaser.Scene {
     });
   }
   /**
-   * tryWarpAt(x,y)
+   * ポータルワープの試行
+   * 概要:
    *  - 現在セルが portalgate なら、同グループの“次の”portalgate へ転送
    *  - need_item が設定されている場合は inventory を確認（canEnter と同一基準）
    *  - クールダウンで多重発火を防止
+   * @param {number} x - 現在のグリッドX
+   * @param {number} y - 現在のグリッドY
    * @returns {boolean} 実際にワープしたら true
    */
-  tryWarpAt(x, y) {
-    const now = (performance && performance.now) ? performance.now() : Date.now();
-    if (now - (this._lastWarpAt || 0) < (this._warpCooldownMs || 180)) return false; // 連発防止
+  tryWarpAt(x, y) { return Warp.tryWarpAt(this, x, y); }
 
-    // 1) portals 配列があれば「a<->b」優先で処理
-    if (Array.isArray(this.portals) && this.portals.length) {
-      let link = null, dir = null;
-      for (const p of this.portals) {
-        if ((p?.a?.x === x && p?.a?.y === y)) { link = p; dir = 'a2b'; break; }
-        if (p?.bidirectional !== false && (p?.b?.x === x && p?.b?.y === y)) { link = p; dir = 'b2a'; break; }
-      }
-      if (!link) return false;
-
-      // 要件チェック（portals.requires を全て満たす必要あり）
-      if (Array.isArray(link.requires) && link.requires.length) {
-        const lacks = link.requires.some(k => !this.inventory?.[k]);
-        if (lacks) {
-          // 要件不足は“失敗演出→リスタート”で明確化
-          const condReach = this.getCondition?.(c => c.id === 'reach_goal');
-          const pathFail  = this.getCondCutscene?.(condReach, 'fail')
-                        || this.getDefaultCutscene?.('goal', 'fail')
-                        || 'assets/cutscene/mission-failed2.png';
-          this.playFailCutscene?.(pathFail, () => { this.buildLevel(true); });
-          return true;
-        }
-      }
-
-      const dest = (dir === 'a2b') ? link.b : link.a;
-      // ★ ポータルキー消費：portals.requires に portalkey が含まれていれば消費
-      if (Array.isArray(link.requires) && link.requires.includes('portalkey') && this.inventory.portalkey) {
-        this.inventory.portalkey = false;
-        // 進捗やカウントは付けず、アイテムボックスのみ反映
-        this.renderItemBox?.();
-      }
-      this._lastWarpAt = now;
-      this._lastWarpCell = this.occKey(dest.x, dest.y);
-      return this._doWarpTo(dest.x, dest.y);
-    }
-
-    // 2) フォールバック：portalgate の group 循環（従来動作）
-    const here = this.occObstacles?.get?.(this.occKey(x,y));
-    if (!here || here.type !== 'portalgate') return false;
-    if (!this.canEnter(x, y)) return false; // obstacles 側の pass/item も尊重
-    const group = here.group ?? null;
-    const list = (this.obstacles || []).filter(ob =>
-      ob.type === 'portalgate' && (ob.group ?? null) === group
-    );
-    if (list.length <= 1) return false;
-    const idx = list.findIndex(ob => ob.x === x && ob.y === y);
-    const next = list[(idx + 1 + list.length) % list.length];
-    const dest = { x: next.x, y: next.y };
-    // ★ フォールバック時も、入場条件が portalkey なら消費
-    //    （canEnter で通過済み＝所持している前提）
-    if ((here.pass === 'need_item' && here.item === 'portalkey') && this.inventory.portalkey) {
-      this.inventory.portalkey = false;
-      this.renderItemBox?.();
-    }
-    this._lastWarpAt = now;
-    this._lastWarpCell = this.occKey(dest.x, dest.y);
-    return this._doWarpTo(dest.x, dest.y);
-  }
-
-  // 内部：フェード付き瞬間移動
-  _doWarpTo(dx, dy) {
-    this._cutscenePlaying = true;
-    this.lockGame?.();
-    this.tweens.add({
-      targets: this.robotSpr, alpha: 0.0, duration: 120, ease: 'quad.out',
-      onComplete: () => {
-        this.robotCell = { x: dx, y: dy };
-        const p2 = this.cellToXY(dx, dy);
-        this.robotSpr.setPosition(this.snap(p2.x), this.snap(p2.y));
-        this.tweens.add({
-          targets: this.robotSpr, alpha: 1.0, duration: 120, ease: 'quad.in',
-          onComplete: () => {
-            this._cutscenePlaying = false;
-            this.unlockGame?.();
-            this.safePlay(this.robotSpr, 'robot_idle', 'robot_idle0');
-            document.dispatchEvent(new CustomEvent('hkq:tick'));
-          }
-        });
-      }
-    });
-    return true;
-  }
+  /**
+   * 内部：フェード付き瞬間移動
+   * @param {number} dx - 目的地グリッドX
+   * @param {number} dy - 目的地グリッドY
+   * @returns {boolean} 常に true（ワープ実行）
+   */
+  _doWarpTo(dx, dy) { return Warp._doWarpTo(this, dx, dy); }
 }
-
