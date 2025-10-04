@@ -9,6 +9,7 @@ import * as Warp from './modules/warp.js';
 import * as Builder from './modules/builder.js';
 import * as UI from './modules/ui.js';
 import { createCoreAnimations } from './modules/animations.js';
+import { ensureTextures, REQUIRED_CORE_KEYS } from './modules/loader.js';
 import { HKQ_EVENTS } from '../common/events.js';
 
 const ISO_ARROW = {
@@ -18,69 +19,7 @@ const ISO_ARROW = {
   left: 'arrow-sw', // ↙︎
 };
 
-// --- 必須テクスチャのマニフェスト（キー → 実ファイルパス） ---
-const TEXTURE_MANIFEST = {
-  // idle
-  'robot_idle0':  'assets/robot/idle/character_robot_idle0.png',
-  'robot_idle1':  'assets/robot/idle/character_robot_idle1.png',
-  // walk (0..7)
-  'robot_walk0':  'assets/robot/walk/character_robot_walk0.png',
-  'robot_walk1':  'assets/robot/walk/character_robot_walk1.png',
-  'robot_walk2':  'assets/robot/walk/character_robot_walk2.png',
-  'robot_walk3':  'assets/robot/walk/character_robot_walk3.png',
-  'robot_walk4':  'assets/robot/walk/character_robot_walk4.png',
-  'robot_walk5':  'assets/robot/walk/character_robot_walk5.png',
-  'robot_walk6':  'assets/robot/walk/character_robot_walk6.png',
-  'robot_walk7':  'assets/robot/walk/character_robot_walk7.png',
-  // cheer
-  'robot_cheer0': 'assets/robot/cheer/character_robot_cheer0.png',
-  'robot_cheer1': 'assets/robot/cheer/character_robot_cheer1.png',
-  // sad（ファイル名が 1 始まりなのでキーも 1..3 で合わせます）
-  'robot_sad0':   'assets/robot/sad/sad0.png',
-  'robot_sad1':   'assets/robot/sad/sad1.png',
-  'robot_sad2':   'assets/robot/sad/sad2.png',
-
-  // （任意）モンスターを使うならここに追加:
-  // 'monsterA_idle0': 'assets/monsterA/idle0.png',
-  // 'monsterA_idle1': 'assets/monsterA/idle1.png',
-};
-
-// このタイトルで“必ずロードしてから”アニメを作る必須キー
-const REQUIRED_CORE_KEYS = [
-  'robot_idle0','robot_idle1',
-  'robot_walk0','robot_walk1','robot_walk2','robot_walk3',
-  'robot_walk4','robot_walk5','robot_walk6','robot_walk7',
-  'robot_cheer0','robot_cheer1',
-  'robot_sad0','robot_sad1','robot_sad2',
-];
-
-// 未ロードキーを見つけてロード → 完了まで待つ
-async function ensureTextures(scene, keys) {
-  const miss = keys.filter(k => !scene.textures.exists(k));
-  if (miss.length === 0) return;
-
-  miss.forEach(k => {
-    const url = TEXTURE_MANIFEST[k];
-    if (!url) console.error('[assets] URL未定義', k);
-    else scene.load.image(k, url);
-  });
-
-  await new Promise((resolve) => {
-    scene.load.once('complete', resolve);
-    scene.load.once('loaderror', (f) => {
-      console.error('[assets] loaderror:', f?.key || f?.src || f);
-      // 必須の一部が失敗しても resolve はする（先で検証）
-    });
-    scene.load.start();
-  });
-
-  const still = keys.filter(k => !scene.textures.exists(k));
-  if (still.length) {
-    // 本当に必須が揃わなかったらここで止める/ログ出し
-    console.error('[assets] 必須テクスチャ未ロード:', still);
-    // throw new Error('必須テクスチャ未ロード'); // 必要なら例外で止める
-  }
-}
+// Loader helpers moved to modules/loader.js
 
 // createCoreAnimations moved to modules/animations.js
 
