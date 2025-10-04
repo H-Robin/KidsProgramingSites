@@ -43,22 +43,75 @@
         </p>
       </div>
     </div>
-
     <script>
-    (function() {
-      var ua = navigator.userAgent;
-      // デスクトップ系Safari判定（iOS版Chrome/Firefox/EdgeのUAトークンも除外）
-      var isSafari = /Safari/.test(ua) && !/(Chrome|Chromium|Edg|OPR|Brave|CriOS|FxiOS|EdgiOS)/.test(ua);
-      // iOS版の各種Safari（Chrome/FirefoxのiOS版はUAに CriOS/FxiOS/EdgiOS が入る）
-      var isIOSSafari = /iP(hone|ad|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
+      // ====================================================================
+      //  Safari制限のワンタッチ切替（ローカル専用スイッチ）
+      //  - localStorage.hkqBlockSafari === '1' のとき、Safari をブロック
+      //  - ?admin=1 で管理用のフローティング切替ボタンを表示
+      //  - ?allowSafari=1 が付いている場合は、管理フラグよりも優先して許可
+      // ====================================================================
+      (function () {
+        var ua = navigator.userAgent;
+        // デスクトップSafari（iOS版Chrome/Firefox/Edgeを除外）
+        var isSafari = /Safari/.test(ua) && !/(Chrome|Chromium|Edg|OPR|Brave|CriOS|FxiOS|EdgiOS)/.test(ua);
+        // iOS純正Safari
+        var isIOSSafari = /iP(hone|ad|od)/.test(ua) && /Safari/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua);
 
-      if (isSafari || isIOSSafari) {
-        var el = document.getElementById('safari-block');
-        el.style.display = 'flex'; // ここで初めて表示にする
-        document.body.classList.add('ui-locked'); // 必要なら操作ロック
-      }
-    })();
+        var params = new URLSearchParams(location.search);
+        var adminUI = params.get('admin') === '1';
+        var allowSafariByQuery = params.has('allowSafari'); // 一時的な許可
+
+        // 管理フラグ（'1'でSafariブロックON）
+        var blockFlag = (localStorage.getItem('hkqBlockSafari') === '0');
+
+        function applyBlocking() {
+          // ?allowSafari=1 が付いている場合は常に許可
+          var shouldBlock = !allowSafariByQuery && blockFlag && (isSafari || isIOSSafari);
+          var overlay = document.getElementById('safari-block');
+          if (!overlay) return;
+          overlay.style.display = shouldBlock ? 'flex' : 'none';
+        }
+
+        function installAdminToggle() {
+          if (!adminUI) return;
+          var btn = document.createElement('button');
+          btn.id = 'hkq-safari-toggle';
+          btn.type = 'button';
+          btn.textContent = 'Safari制限: ' + (blockFlag ? 'ON' : 'OFF');
+          Object.assign(btn.style, {
+            position: 'fixed', right: '12px', top: '12px', zIndex: 100000,
+            padding: '8px 12px', borderRadius: '10px', border: '1px solid #334155',
+            background: '#0b132b', color: '#9bd1ff', font: '12px/1 system-ui, sans-serif',
+            boxShadow: '0 2px 10px rgba(0,0,0,.3)', cursor: 'pointer'
+          });
+          btn.addEventListener('click', function(){
+            blockFlag = !blockFlag;
+            localStorage.setItem('hkqBlockSafari', blockFlag ? '1' : '0');
+            btn.textContent = 'Safari制限: ' + (blockFlag ? 'ON' : 'OFF');
+            applyBlocking();
+          });
+          document.body.appendChild(btn);
+        }
+
+        // 初期適用 & 管理UI
+        applyBlocking();
+        installAdminToggle();
+
+        // デバッグ表示（任意）
+        if (params.get('debug') === 'ua') {
+          var panel = document.createElement('div');
+          panel.style.position = 'fixed';
+          panel.style.bottom = '0';
+          panel.style.right = '0';
+          panel.style.background = 'rgba(0,0,0,.7)';
+          panel.style.color = '#0ff';
+          panel.style.font = '12px/1.4 monospace';
+          panel.style.padding = '6px 10px';
+          panel.style.zIndex = '100000';
+          panel.textContent = 'UA=' + ua + '\n' + 'isSafari=' + isSafari + ' / isIOSSafari=' + isIOSSafari + ' / blockFlag=' + blockFlag + ' / allowSafari=' + allowSafariByQuery;
+          document.body.appendChild(panel);
+        }
+      })();
     </script>
-    <!-- ▲ Safari用ブロックオーバーレイ -->
 </body>
 </html>
